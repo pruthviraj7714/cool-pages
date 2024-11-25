@@ -114,7 +114,6 @@ const Navbar = () => {
                   Login
                 </Button>
                 <Button
-                  className="bg-white"
                   onClick={() => navigate("/signup")}
                 >
                   Sign Up

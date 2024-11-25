@@ -89,11 +89,11 @@ export default function CreatePage() {
 
   const onSubmit = async (data: CreatePageFormValues) => {
     try {
-      const res = await axios.post(`${BACKEND_URL}/pages/create-page`, {
+      await axios.post(`${BACKEND_URL}/pages/create-page`, {
         data
       })
 
-      
+      toast.success("Page Successfully Created!");
     } catch (error : any) {
       toast.error('Error while create page', {
         description : error.response.data.message

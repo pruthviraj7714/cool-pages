@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import authMiddleware from "../middleware";
-import { Button, Header, Page } from "../models/page";
+import { Button, Header, Page, SubHeader } from "../models/page";
 import { z } from "zod";
 import { Subheader } from "../models/subheader";
 
@@ -21,22 +21,34 @@ async function createButton(
     ...(parentType === "subheader" && { subheaderRef: parentRef }),
   });
 
-  if (buttonData.leftClickSubOptions && buttonData.leftClickSubOptions.length > 0) {
-    const leftClickPromises = buttonData.leftClickSubOptions.map((subButton: any) =>
-      createButton(subButton, createdButton._id, "subheader")
+  if (
+    buttonData.leftClickSubOptions &&
+    buttonData.leftClickSubOptions.length > 0
+  ) {
+    const leftClickPromises = buttonData.leftClickSubOptions.map(
+      (subButton: any) =>
+        createButton(subButton, createdButton._id, "subheader")
     );
     const createdLeftClickSubOptions = await Promise.all(leftClickPromises);
 
-    createdButton.leftClickSubOptions = createdLeftClickSubOptions.map((b) => b._id);
+    createdButton.leftClickSubOptions = createdLeftClickSubOptions.map(
+      (b) => b._id
+    );
   }
 
-  if (buttonData.rightClickSubOptions && buttonData.rightClickSubOptions.length > 0) {
-    const rightClickPromises = buttonData.rightClickSubOptions.map((subButton: any) =>
-      createButton(subButton, createdButton._id, "subheader")
+  if (
+    buttonData.rightClickSubOptions &&
+    buttonData.rightClickSubOptions.length > 0
+  ) {
+    const rightClickPromises = buttonData.rightClickSubOptions.map(
+      (subButton: any) =>
+        createButton(subButton, createdButton._id, "subheader")
     );
     const createdRightClickSubOptions = await Promise.all(rightClickPromises);
 
-    createdButton.rightClickSubOptions = createdRightClickSubOptions.map((b) => b._id);
+    createdButton.rightClickSubOptions = createdRightClickSubOptions.map(
+      (b) => b._id
+    );
   }
 
   await createdButton.save();
@@ -87,12 +99,12 @@ pageRouter.post(
                         createdSubheader._id,
                         "subheader"
                       );
-                      createdSubheader.buttons.push(createdButton._id); 
+                      createdSubheader.buttons.push(createdButton._id);
                     }
                   );
                   await Promise.all(subheaderButtonPromises);
 
-                  await createdSubheader.save(); 
+                  await createdSubheader.save();
                 }
 
                 return createdSubheader;
@@ -382,3 +394,126 @@ pageRouter.get(
     }
   }
 );
+
+pageRouter.post("/populate-dummy-data", async (req, res) => {
+  try {
+    await Promise.all([
+      Page.deleteMany({}),
+      Header.deleteMany({}),
+      SubHeader.deleteMany({}),
+      Button.deleteMany({}),
+    ]);
+
+    const baseButtons = await Button.create([
+      {
+        displayText: "Base Button 1",
+        onLeftClickOutput: "Left Click Output 1",
+        onRightClickOutput: "Right Click Output 1",
+      },
+      {
+        displayText: "Base Button 2",
+        onLeftClickOutput: "Left Click Output 2",
+        onRightClickOutput: "Right Click Output 2",
+      },
+      {
+        displayText: "Base Button 3",
+        onLeftClickOutput: "Left Click Output 3",
+        onRightClickOutput: "Right Click Output 3",
+      },
+    ]);
+
+    const subButtons = await Button.create([
+      {
+        displayText: "Sub Button 1",
+        onLeftClickOutput: "Sub Left Click 1",
+        onRightClickOutput: "Sub Right Click 1",
+        leftClickSubOptions: [baseButtons[0]._id, baseButtons[1]._id],
+        rightClickSubOptions: [baseButtons[2]._id],
+      },
+      {
+        displayText: "Sub Button 2",
+        onLeftClickOutput: "Sub Left Click 2",
+        onRightClickOutput: "Sub Right Click 2",
+        leftClickSubOptions: [baseButtons[1]._id],
+        rightClickSubOptions: [baseButtons[0]._id, baseButtons[2]._id],
+      },
+    ]);
+
+    const advancedButtons = await Button.create([
+      {
+        displayText: "Advanced Button 1",
+        onLeftClickOutput: "Advanced Left Click 1",
+        onRightClickOutput: "Advanced Right Click 1",
+        leftClickSubOptions: [subButtons[0]._id],
+        rightClickSubOptions: [subButtons[1]._id],
+      },
+    ]);
+
+    const subheaders = await SubHeader.create([
+      {
+        title: "SubHeader 1",
+        order: 1,
+        buttons: [subButtons[0]._id, baseButtons[0]._id],
+      },
+      {
+        title: "SubHeader 2",
+        order: 2,
+        buttons: [subButtons[1]._id, baseButtons[1]._id, advancedButtons[0]._id],
+      },
+    ]);
+
+    const headers = await Header.create([
+      {
+        title: "Header 1",
+        order: 1,
+        subheaders: [subheaders[0]._id],
+        buttons: [baseButtons[0]._id, subButtons[0]._id],
+      },
+      {
+        title: "Header 2",
+        order: 2,
+        subheaders: [subheaders[1]._id],
+        buttons: [baseButtons[1]._id, advancedButtons[0]._id],
+      },
+      {
+        title: "Header 3",
+        order: 3,
+        subheaders: [],
+        buttons: [baseButtons[2]._id],
+      },
+    ]);
+
+    const page = await Page.create({
+      title: "Main Page with Nested Data",
+      headers: headers.map((header) => header._id),
+    });
+
+    const populatedPage = await Page.findById(page._id).populate({
+      path: "headers",
+      populate: [
+        {
+          path: "subheaders",
+          populate: {
+            path: "buttons",
+            populate: ["leftClickSubOptions", "rightClickSubOptions"],
+          },
+        },
+        {
+          path: "buttons",
+          populate: ["leftClickSubOptions", "rightClickSubOptions"],
+        },
+      ],
+    });
+
+    res.json({
+      message: "Complex dummy data populated successfully",
+      data: populatedPage,
+    });
+  } catch (error : any) {
+    console.error("Error populating complex dummy data:", error);
+    res.status(500).json({
+      message: "Error populating complex dummy data",
+      error: error.message,
+    });
+  }
+});

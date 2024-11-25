@@ -48,31 +48,68 @@ function PageDetails() {
 
   const [history, setHistory] = useState<string[]>([""]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isUndoRedoAction, setIsUndoRedoAction] = useState(false);
+
+  const updateHistory = (newText: string) => {
+    if (isUndoRedoAction) {
+      setIsUndoRedoAction(false);
+      return;
+    }
+
+    if (newText !== history[currentIndex]) {
+      const newHistory = history.slice(0, currentIndex + 1);
+      newHistory.push(newText);
+      setHistory(newHistory);
+      setCurrentIndex(newHistory.length - 1);
+    }
+  };
 
   const handleUndo = () => {
     if (currentIndex > 0) {
+      setIsUndoRedoAction(true);
       setCurrentIndex((prevIndex) => prevIndex - 1);
-      textboxRef.current!.value = history[currentIndex - 1];
+      if (textboxRef.current) {
+        textboxRef.current.value = history[currentIndex - 1];
+        // Trigger focus and move cursor to end
+        textboxRef.current.focus();
+        textboxRef.current.setSelectionRange(
+          textboxRef.current.value.length,
+          textboxRef.current.value.length
+        );
+      }
     }
   };
 
   const handleRedo = () => {
     if (currentIndex < history.length - 1) {
+      setIsUndoRedoAction(true);
       setCurrentIndex((prevIndex) => prevIndex + 1);
-      textboxRef.current!.value = history[currentIndex + 1];
+      if (textboxRef.current) {
+        textboxRef.current.value = history[currentIndex + 1];
+        // Trigger focus and move cursor to end
+        textboxRef.current.focus();
+        textboxRef.current.setSelectionRange(
+          textboxRef.current.value.length,
+          textboxRef.current.value.length
+        );
+      }
     }
   };
 
   const handleReset = () => {
-    textboxRef.current!.value = "";
-    setHistory([""]);
+    const emptyText = "";
+    if (textboxRef.current) {
+      textboxRef.current.value = emptyText;
+      textboxRef.current.focus();
+    }
+    setHistory([emptyText]);
     setCurrentIndex(0);
   };
 
   const handleCopy = () => {
     if (textboxRef.current) {
       navigator.clipboard.writeText(textboxRef.current.value).then(() => {
-        alert("Text copied to clipboard!");
+        toast.success("Text copied to clipboard!");
       });
     }
   };
@@ -96,6 +133,7 @@ function PageDetails() {
     e.preventDefault();
     if (textboxRef.current && btn.onLeftClickOutput) {
       textboxRef.current.value = btn.onLeftClickOutput;
+      updateHistory(btn.onLeftClickOutput);
     }
   };
 
@@ -103,6 +141,7 @@ function PageDetails() {
     e.preventDefault();
     if (textboxRef.current && btn.onRightClickOutput) {
       textboxRef.current.value = btn.onRightClickOutput;
+      updateHistory(btn.onRightClickOutput);
     }
   };
 
@@ -111,6 +150,37 @@ function PageDetails() {
       fetchPageDetails();
     }
   }, [pageId]);
+
+  // Add event listener for textarea changes
+  useEffect(() => {
+    const textbox = textboxRef.current;
+    if (!textbox) return;
+
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLTextAreaElement;
+      updateHistory(target.value);
+    };
+
+    textbox.addEventListener('input', handleInput);
+    return () => textbox.removeEventListener('input', handleInput);
+  }, [currentIndex, history]);
+
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, history]);
 
   if (loading) {
     return (
@@ -129,8 +199,13 @@ function PageDetails() {
         <section className="w-full grid grid-cols-4 gap-3">
           {pageDetails?.headers
             ?.sort((a, b) => a.order - b.order)
-            .map((header : any) => (
-              <HeaderCard key={header._id} header={header} handleLeftClick={handleLeftClick} handleRightClick={handleRightClick}  />
+            .map((header: any) => (
+              <HeaderCard 
+                key={header._id} 
+                header={header} 
+                handleLeftClick={handleLeftClick} 
+                handleRightClick={handleRightClick} 
+              />
             ))}
         </section>
       </div>
@@ -139,14 +214,14 @@ function PageDetails() {
         <div className="flex flex-col gap-2">
           <button
             onClick={handleUndo}
-            className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={currentIndex === 0}
           >
             Undo
           </button>
           <button
             onClick={handleRedo}
-            className="p-2 bg-green-500 text-white rounded hover:bg-green-600"
+            className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={currentIndex === history.length - 1}
           >
             Redo
@@ -170,7 +245,7 @@ function PageDetails() {
             autoFocus
             ref={textboxRef}
             placeholder="Text will appear here"
-            className="w-full h-full p-4  bg-slate-200"
+            className="w-full h-full p-4 bg-slate-200 resize-none"
           />
         </div>
       </div>

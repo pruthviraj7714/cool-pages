@@ -6,8 +6,12 @@ const ButtonSchema = new mongoose.Schema({
   subheaderId: { type: mongoose.Schema.Types.ObjectId, ref: "SubHeader" },
   onLeftClickOutput: { type: String },
   onRightClickOutput: { type: String },
-  leftClickSubOptions: [{ type: String }],
-  rightClickSubOptions: [{ type: String }],
+  leftClickSubOptions: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Button" },
+  ],
+  rightClickSubOptions: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Button" },
+  ],
 });
 
 const SubHeaderSchema = new mongoose.Schema({

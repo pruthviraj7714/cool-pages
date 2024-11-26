@@ -23,6 +23,7 @@ const SubHeaderSchema = new mongoose.Schema({
 const HeaderSchema = new mongoose.Schema({
   title: { type: String },
   order: { type: Number },
+  displayText: { type: String },
   subheaders: [{ type: mongoose.Schema.Types.ObjectId, ref: "SubHeader" }],
   buttons: [{ type: mongoose.Schema.Types.ObjectId, ref: "Button" }],
 });

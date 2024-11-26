@@ -70,7 +70,6 @@ function PageDetails() {
       setCurrentIndex((prevIndex) => prevIndex - 1);
       if (textboxRef.current) {
         textboxRef.current.value = history[currentIndex - 1];
-        // Trigger focus and move cursor to end
         textboxRef.current.focus();
         textboxRef.current.setSelectionRange(
           textboxRef.current.value.length,
@@ -86,7 +85,6 @@ function PageDetails() {
       setCurrentIndex((prevIndex) => prevIndex + 1);
       if (textboxRef.current) {
         textboxRef.current.value = history[currentIndex + 1];
-        // Trigger focus and move cursor to end
         textboxRef.current.focus();
         textboxRef.current.setSelectionRange(
           textboxRef.current.value.length,
@@ -151,7 +149,6 @@ function PageDetails() {
     }
   }, [pageId]);
 
-  // Add event listener for textarea changes
   useEffect(() => {
     const textbox = textboxRef.current;
     if (!textbox) return;
@@ -165,7 +162,6 @@ function PageDetails() {
     return () => textbox.removeEventListener('input', handleInput);
   }, [currentIndex, history]);
 
-  // Add keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -196,7 +192,7 @@ function PageDetails() {
         <h1 className="text-2xl font-bold text-gray-800">
           Title: {pageDetails?.title}
         </h1>
-        <section className="w-full grid grid-cols-4 gap-3">
+        <section className="w-full grid grid-cols-3 gap-1">
           {pageDetails?.headers
             ?.sort((a, b) => a.order - b.order)
             .map((header: any) => (

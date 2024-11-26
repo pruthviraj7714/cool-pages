@@ -49,7 +49,10 @@ export default function HeaderCard({
   }, []);
 
   const isSubmenuActive = (buttonId: string, path: string[]): boolean => {
-    return activeButtonId === buttonId && path.every((item, index) => activeMenuPath[index] === item);
+    return (
+      activeButtonId === buttonId &&
+      path.every((item, index) => activeMenuPath[index] === item)
+    );
   };
 
   const handleButtonClick = (
@@ -62,13 +65,19 @@ export default function HeaderCard({
     e.preventDefault();
     e.stopPropagation();
 
-    const subOptions = isRightClick ? btn.rightClickSubOptions : btn.leftClickSubOptions;
+    const subOptions = isRightClick
+      ? btn.rightClickSubOptions
+      : btn.leftClickSubOptions;
     const handler = isRightClick ? handleRightClick : handleLeftClick;
 
     handler(btn, e);
 
     if (subOptions && subOptions.length > 0) {
-      const newPath = [...currentPath, btn.displayText, isRightClick ? "right" : "left"];
+      const newPath = [
+        ...currentPath,
+        btn.displayText,
+        isRightClick ? "right" : "left",
+      ];
       if (isSubmenuActive(buttonId, newPath)) {
         setActiveMenuPath(activeMenuPath.slice(0, currentPath.length));
         setActiveButtonId(null);
@@ -89,25 +98,31 @@ export default function HeaderCard({
     parentPath: string[] = []
   ): JSX.Element => {
     const currentPath = [...parentPath, btn.displayText];
-    const isLeftSubmenuOpen = isSubmenuActive(buttonId, [...currentPath, "left"]);
-    const isRightSubmenuOpen = isSubmenuActive(buttonId, [...currentPath, "right"]);
+    const isLeftSubmenuOpen = isSubmenuActive(buttonId, [
+      ...currentPath,
+      "left",
+    ]);
+    const isRightSubmenuOpen = isSubmenuActive(buttonId, [
+      ...currentPath,
+      "right",
+    ]);
 
     return (
       <div className="relative button-container">
         <button
-          className={`border border-black px-4 py-2 rounded-md hover:bg-gray-200 ${
+          className={`border border-black px-1 py-1 rounded-md hover:bg-gray-200 ${
             level > 0 ? "ml-4" : ""
           }`}
           onClick={(e) => handleButtonClick(btn, buttonId, e, parentPath)}
-          onContextMenu={(e) => handleButtonClick(btn, buttonId, e, parentPath, true)}
+          onContextMenu={(e) =>
+            handleButtonClick(btn, buttonId, e, parentPath, true)
+          }
         >
           {btn.displayText}
         </button>
 
         {isLeftSubmenuOpen && btn.leftClickSubOptions && (
-          <div
-            className="absolute mt-2 flex flex-col bg-white border border-gray-200 shadow-md rounded-md z-10 left-0 min-w-max"
-          >
+          <div className="absolute mt-2 flex flex-col bg-white border border-gray-200 shadow-md rounded-md z-10 left-0 min-w-max">
             {btn.leftClickSubOptions.map((subBtn, index) => (
               <div key={`left-${index}`}>
                 {renderButtonWithSubOptions(
@@ -122,9 +137,7 @@ export default function HeaderCard({
         )}
 
         {isRightSubmenuOpen && btn.rightClickSubOptions && (
-          <div
-            className="absolute mt-2 flex flex-col bg-white border border-gray-200 shadow-md rounded-md z-10 right-0 min-w-max"
-          >
+          <div className="absolute mt-2 flex flex-col bg-white border border-gray-200 shadow-md rounded-md z-10 right-0 min-w-max">
             {btn.rightClickSubOptions.map((subBtn, index) => (
               <div key={`right-${index}`}>
                 {renderButtonWithSubOptions(
@@ -148,22 +161,29 @@ export default function HeaderCard({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {header.subheaders?.sort((a, b) => a.order - b.order).map((subheader) => (
-            <div key={subheader.title}>
-              <h3 className="ml-4 text-3xl font-bold">{subheader.title}</h3>
-              {subheader.buttons && (
-                <div className="ml-6 mt-2 flex flex-wrap gap-3">
-                  {subheader.buttons.map((btn, index) => (
-                    <div key={index}>
-                      {renderButtonWithSubOptions(btn, `subheader-${subheader.title}-${index}`)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          {header.subheaders
+            ?.sort((a, b) => a.order - b.order)
+            .map((subheader) => (
+              <div key={subheader.title}>
+                <h3 className="ml-4 text-3xl mb-5 font-semibold">
+                  {subheader.title}
+                </h3>
+                {subheader.buttons && (
+                  <div className="ml-6 mt-2 flex gap-3">
+                    {subheader.buttons.map((btn, index) => (
+                      <div key={index}>
+                        {renderButtonWithSubOptions(
+                          btn,
+                          `subheader-${subheader.title}-${index}`
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           {header.buttons && (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-3">
               {header.buttons.map((btn, index) => (
                 <div key={index}>
                   {renderButtonWithSubOptions(btn, `header-${index}`)}

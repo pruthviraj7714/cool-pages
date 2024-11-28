@@ -1,4 +1,6 @@
+import { config } from "dotenv";
 import mongoose from "mongoose";
+config();
 
 const MONGODB_URL = process.env.MONGODB_URI ?? "";
 

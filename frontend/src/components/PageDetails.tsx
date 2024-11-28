@@ -24,6 +24,7 @@ interface SubHeaderSchema {
 
 interface HeaderSchema {
   title: string;
+  displayText: string;
   order: number;
   subheaders?: SubHeaderSchema[];
   buttons?: ButtonSchema[];
@@ -62,6 +63,240 @@ function PageDetails() {
       setHistory(newHistory);
       setCurrentIndex(newHistory.length - 1);
     }
+  };
+
+  const handleHeaderClick = (header: HeaderSchema) => {
+    if (!textboxRef.current) return;
+
+    const text = textboxRef.current.value;
+    const lines = text.split("\n");
+
+    if (text.includes(header.displayText)) return;
+
+    const headerIndex = lines.findIndex(
+      (line) => line.trim() === header.displayText
+    );
+
+    if (headerIndex === -1) {
+      const orderedHeaders = pageDetails?.headers
+        ?.sort((a, b) => a.order - b.order)
+        .filter((h) => !lines.some((line) => line.trim() === h.displayText));
+
+      if (orderedHeaders && orderedHeaders[0] === header) {
+        const newText = `${header.displayText}:${text ? `\n${text}` : ""}`;
+        textboxRef.current.value = newText;
+      } else {
+       
+        const newText = text
+          ? `${text}\n${header.displayText}:`
+          : `${header.displayText}:`;
+        textboxRef.current.value = newText;
+      }
+
+      updateHistory(textboxRef.current.value);
+    }
+  };
+
+  const handleSubHeaderClick = (
+    header: HeaderSchema,
+    subheader: SubHeaderSchema
+  ) => {
+    if (!textboxRef.current) return;
+
+    const text = textboxRef.current.value;
+    const lines = text.split("\n");
+    if (text.includes(subheader.title)) return;
+
+    const headerIndex = lines.findIndex(
+      (line) => line.trim() === header.displayText
+    );
+
+
+    if (headerIndex !== -1) {
+      // Check if subheader already exists
+      const subheaderExists = lines.some((line) =>
+        line.trim().startsWith(`  ${subheader.title}`)
+      );
+
+      if (!subheaderExists) {
+        // Find the correct position to insert subheader
+        const orderedSubheaders = header.subheaders
+          ?.sort((a, b) => a.order - b.order)
+          .filter(
+            (sh) =>
+              !lines.some((line) => line.trim().startsWith(`  ${sh.title}`))
+          );
+
+        if (orderedSubheaders && orderedSubheaders[0] === subheader) {
+          // Insert at the first position after the header
+          lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
+        } else {
+          // Find the last existing subheader and insert after it
+          const lastSubheaderIndex = lines
+            .slice(headerIndex + 1)
+            //@ts-ignore
+            .findLastIndex((line) => line.trim().startsWith("  "));
+
+          if (lastSubheaderIndex !== -1) {
+            lines.splice(
+              headerIndex + 1 + lastSubheaderIndex + 1,
+              0,
+              `  ${subheader.title}:`
+            );
+          } else {
+            // If no subheaders exist, insert right after header
+            lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
+          }
+        }
+
+        textboxRef.current.value = lines.join("\n");
+        updateHistory(textboxRef.current.value);
+      }
+    } else {
+      textboxRef.current.value = `${text}\n${subheader.title}:`;
+      // const newText = text
+      //   ? `${text}\n${header.displayText}:\n  ${subheader.title}:`
+      //   : `${header.displayText}:\n  ${subheader.title}:`;
+      // textboxRef.current.value = newText;
+      updateHistory(textboxRef.current.value);
+    }
+  };
+
+  const handleLeftClick = (btn: ButtonSchema, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!textboxRef.current) return;
+
+    const text = textboxRef.current.value;
+    const lines = text.split("\n");
+    const buttonText = btn.onLeftClickOutput || btn.displayText;
+
+    const header = pageDetails?.headers?.find((h) => h.buttons?.includes(btn));
+    const subheader = pageDetails?.headers
+      ?.flatMap((h) => h.subheaders || [])
+      .find((sh) => sh.buttons?.includes(btn));
+
+    if (subheader) {
+      const parentHeader = pageDetails?.headers?.find((h) =>
+        h.subheaders?.includes(subheader)
+      );
+
+      if (parentHeader) {
+        const headerText = parentHeader.displayText;
+        const subheaderText = subheader.title;
+
+        const subheaderIndex = lines.findIndex((line) =>
+          line.trim().startsWith(`  ${subheaderText}`)
+        );
+
+        if (subheaderIndex !== -1) {
+          // Append button text to existing subheader
+          lines[subheaderIndex] += ` ${buttonText}`;
+        } else {
+          const headerIndex = lines.findIndex(
+            (line) => line.trim() === headerText
+          );
+
+          if (headerIndex !== -1) {
+            // Add subheader with button text below header
+            lines.splice(
+              headerIndex + 1,
+              0,
+              `  ${subheaderText}: ${buttonText}`
+            );
+          } else {
+            // Add header and subheader with button text
+            lines.push(`${headerText}:`, `  ${subheaderText}: ${buttonText}`);
+          }
+        }
+      }
+    } else if (header) {
+      const headerText = header.displayText;
+      const headerIndex = lines.findIndex((line) => line.trim() === headerText);
+
+      if (headerIndex !== -1) {
+        // Append button text to existing header
+        lines[headerIndex] += ` ${buttonText}`;
+      } else {
+        // Add header with button text
+        lines.push(`${headerText}: ${buttonText}`);
+      }
+    } else {
+      // No context, add button directly
+      lines.push(buttonText);
+    }
+
+    textboxRef.current.value = lines.join("\n");
+    updateHistory(textboxRef.current.value);
+  };
+
+  const handleRightClick = (btn: ButtonSchema, e: React.MouseEvent) => {
+    e.preventDefault();
+    document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+    if (!textboxRef.current) return;
+
+    const text = textboxRef.current.value;
+    const buttonText = btn.onRightClickOutput || btn.displayText;
+
+    const header = pageDetails?.headers?.find((h) => h.buttons?.includes(btn));
+    const subheader = pageDetails?.headers
+      ?.flatMap((h) => h.subheaders || [])
+      .find((sh) => sh.buttons?.includes(btn));
+
+    const lines = text.split("\n");
+
+    if (subheader) {
+      const parentHeader = pageDetails?.headers?.find((h) =>
+        h.subheaders?.includes(subheader)
+      );
+
+      if (parentHeader) {
+        const headerText = parentHeader.displayText;
+        const subheaderText = subheader.title;
+
+        const subheaderIndex = lines.findIndex((line) =>
+          line.trim().startsWith(`  ${subheaderText}`)
+        );
+
+        if (subheaderIndex !== -1) {
+          // Replace existing subheader text with button text
+          lines[subheaderIndex] = `  ${subheaderText}: ${buttonText}`;
+        } else {
+          const headerIndex = lines.findIndex(
+            (line) => line.trim() === headerText
+          );
+
+          if (headerIndex !== -1) {
+            // Insert new subheader with button text below header
+            lines.splice(
+              headerIndex + 1,
+              0,
+              `  ${subheaderText}: ${buttonText}`
+            );
+          } else {
+            // Add header and subheader with button text
+            lines.push(`${headerText}:`, `  ${subheaderText}: ${buttonText}`);
+          }
+        }
+      }
+    } else if (header) {
+      const headerText = header.displayText;
+      const headerIndex = lines.findIndex((line) => line.trim() === headerText);
+
+      if (headerIndex !== -1) {
+        // Replace existing header text with button text
+        lines[headerIndex] = `${headerText}: ${buttonText}`;
+      } else {
+        // Add header with button text
+        lines.push(`${headerText}: ${buttonText}`);
+      }
+    } else {
+      // No context, add button directly
+      lines.push(buttonText);
+    }
+
+    textboxRef.current.value = lines.join("\n");
+    updateHistory(textboxRef.current.value);
   };
 
   const handleUndo = () => {
@@ -127,22 +362,6 @@ function PageDetails() {
     }
   };
 
-  const handleLeftClick = (btn: ButtonSchema, e: React.MouseEvent) => {
-    e.preventDefault();
-    if (textboxRef.current && btn.onLeftClickOutput) {
-      textboxRef.current.value = btn.onLeftClickOutput;
-      updateHistory(btn.onLeftClickOutput);
-    }
-  };
-
-  const handleRightClick = (btn: ButtonSchema, e: React.MouseEvent) => {
-    e.preventDefault();
-    if (textboxRef.current && btn.onRightClickOutput) {
-      textboxRef.current.value = btn.onRightClickOutput;
-      updateHistory(btn.onRightClickOutput);
-    }
-  };
-
   useEffect(() => {
     if (pageId) {
       fetchPageDetails();
@@ -158,13 +377,13 @@ function PageDetails() {
       updateHistory(target.value);
     };
 
-    textbox.addEventListener('input', handleInput);
-    return () => textbox.removeEventListener('input', handleInput);
+    textbox.addEventListener("input", handleInput);
+    return () => textbox.removeEventListener("input", handleInput);
   }, [currentIndex, history]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
           handleRedo();
@@ -174,8 +393,8 @@ function PageDetails() {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [currentIndex, history]);
 
   if (loading) {
@@ -192,15 +411,26 @@ function PageDetails() {
         <h1 className="text-2xl font-bold text-gray-800">
           Title: {pageDetails?.title}
         </h1>
-        <section className="w-full grid grid-cols-3 gap-1">
+        <section className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
           {pageDetails?.headers
             ?.sort((a, b) => a.order - b.order)
             .map((header: any) => (
-              <HeaderCard 
-                key={header._id} 
-                header={header} 
-                handleLeftClick={handleLeftClick} 
-                handleRightClick={handleRightClick} 
+              <HeaderCard
+                header={header}
+                handleLeftClick={handleLeftClick}
+                handleRightClick={handleRightClick}
+                //@ts-ignore
+                handleHeaderClick={(header: HeaderSchema) => {
+                  handleHeaderClick(header), console.log(header);
+                }}
+                //@ts-ignore
+                handleSubHeaderClick={(
+                  header: HeaderSchema,
+                  subheader: SubHeaderSchema
+                ) => {
+                  handleSubHeaderClick(header, subheader),
+                    console.log(subheader);
+                }}
               />
             ))}
         </section>
@@ -241,7 +471,7 @@ function PageDetails() {
             autoFocus
             ref={textboxRef}
             placeholder="Text will appear here"
-            className="w-full h-full p-4 bg-slate-200 resize-none"
+            className="w-full h-full p-4 bg-slate-200 font-semibold resize-none"
           />
         </div>
       </div>

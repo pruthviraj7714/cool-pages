@@ -1,10 +1,10 @@
 import { Request, Response, Router } from "express";
 import authMiddleware from "../middleware";
-import { Button, Header, Page, SubHeader } from "../models/page";
 import { z } from "zod";
-import { Subheader } from "../models/subheader";
+import { Button, Header, Page, SubHeader } from "../models/page";
 
 export const pageRouter = Router();
+
 
 async function createButton(
   buttonData: any,
@@ -82,7 +82,7 @@ pageRouter.post(
           if (header.subheaders) {
             const subheaderPromises = header.subheaders.map(
               async (subheader: any) => {
-                const createdSubheader = await Subheader.create({
+                const createdSubheader = await SubHeader.create({
                   title: subheader.title,
                   order: subheader.order,
                   headerRef: createdHeader._id,
@@ -348,49 +348,131 @@ pageRouter.get(
   }
 );
 
+// pageRouter.get(
+//   "/page-details/:pageId",
+//   async (req: Request, res: Response): Promise<any> => {
+//     const { pageId } = req.params;
+
+//     if (!pageId) {
+//       return res.status(400).json({
+//         message: "Page Id is missing",
+//       });
+//     }
+
+//     try {
+//       const page = await Page.findById(pageId).populate({
+//         path: "headers",
+//         populate: [
+//           {
+//             path: "buttons",
+//             populate: [
+//               { path: "leftClickSubOptions" },
+//               { path: "rightClickSubOptions" },
+//             ],
+//           },
+//           {
+//             path: "subheaders",
+//             populate: {
+//               path: "buttons",
+//               populate: [
+//                 { path: "leftClickSubOptions" },
+//                 { path: "rightClickSubOptions" },
+//               ],
+//             },
+//           },
+//         ],
+//       });
+
+//       if (!page) {
+//         return res.status(404).json({ message: "Page not found!" });
+//       }
+
+//       return res.status(200).json({ page });
+//     } catch (error) {
+//       console.error(error);
+//       return res.status(500).json({ message: "Internal Server Error" });
+//     }
+//   }
+// );
+
 pageRouter.get(
   "/page-details/:pageId",
   async (req: Request, res: Response): Promise<any> => {
-    const { pageId } = req.params;
+    async function populateButtonRecursively(button: any) {
+      if (!button) return null;
 
-    if (!pageId) {
-      return res.status(400).json({
-        message: "Page Id is missing",
-      });
+      const populatedButton = await Button.findById(button._id)
+        .populate("headerId")
+        .populate("subheaderId")
+        .populate({
+          path: "leftClickSubOptions",
+          populate: [{ path: "headerId" }, { path: "subheaderId" }],
+        })
+        .populate({
+          path: "rightClickSubOptions",
+          populate: [{ path: "headerId" }, { path: "subheaderId" }],
+        });
+
+      if (populatedButton?.leftClickSubOptions) {
+        //@ts-ignore
+        populatedButton?.leftClickSubOptions = await Promise.all(
+          populatedButton.leftClickSubOptions.map(populateButtonRecursively)
+        );
+      }
+
+      if (populatedButton?.rightClickSubOptions) {
+        //@ts-ignore
+        populatedButton?.rightClickSubOptions = await Promise.all(
+          populatedButton.rightClickSubOptions.map(populateButtonRecursively)
+        );
+      }
+
+      return populatedButton;
     }
 
     try {
-      const page = await Page.findById(pageId).populate({
+      const page = await Page.findById(req.params.pageId).populate({
         path: "headers",
         populate: [
           {
             path: "buttons",
-            populate: [
-              { path: "leftClickSubOptions" },
-              { path: "rightClickSubOptions" },
-            ],
+            populate: [{ path: "headerId" }, { path: "subheaderId" }],
           },
           {
             path: "subheaders",
             populate: {
               path: "buttons",
-              populate: [
-                { path: "leftClickSubOptions" },
-                { path: "rightClickSubOptions" },
-              ],
+              populate: [{ path: "headerId" }, { path: "subheaderId" }],
             },
           },
         ],
       });
 
       if (!page) {
-        return res.status(404).json({ message: "Page not found!" });
+        return res.status(404).json({ message: "Page not found" });
       }
 
-      return res.status(200).json({ page });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Internal Server Error" });
+      for (let header of page.headers) {
+        //@ts-ignore
+        header?.buttons = await Promise.all(
+          //@ts-ignore
+          header?.buttons.map(populateButtonRecursively)
+        );
+
+        //@ts-ignore
+        for (let subheader of header?.subheaders) {
+          subheader.buttons = await Promise.all(
+            subheader.buttons.map(populateButtonRecursively)
+          );
+        }
+      }
+
+      res.json({ page });
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Error fetching page details",
+        error: error.message,
+      });
     }
   }
 );
@@ -425,16 +507,12 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
     const subButtons = await Button.create([
       {
         displayText: "Sub Button 1",
-        onLeftClickOutput: "Sub Left Click 1",
         onRightClickOutput: "Sub Right Click 1",
         leftClickSubOptions: [baseButtons[0]._id, baseButtons[1]._id],
-        rightClickSubOptions: [baseButtons[2]._id],
       },
       {
         displayText: "Sub Button 2",
         onLeftClickOutput: "Sub Left Click 2",
-        onRightClickOutput: "Sub Right Click 2",
-        leftClickSubOptions: [baseButtons[1]._id],
         rightClickSubOptions: [baseButtons[0]._id, baseButtons[2]._id],
       },
     ]);
@@ -442,8 +520,6 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
     const advancedButtons = await Button.create([
       {
         displayText: "Advanced Button 1",
-        onLeftClickOutput: "Advanced Left Click 1",
-        onRightClickOutput: "Advanced Right Click 1",
         leftClickSubOptions: [subButtons[0]._id],
         rightClickSubOptions: [subButtons[1]._id],
       },
@@ -458,25 +534,32 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
       {
         title: "SubHeader 2",
         order: 2,
-        buttons: [subButtons[1]._id, baseButtons[1]._id, advancedButtons[0]._id],
+        buttons: [
+          subButtons[1]._id,
+          baseButtons[1]._id,
+          advancedButtons[0]._id,
+        ],
       },
     ]);
 
     const headers = await Header.create([
       {
         title: "Header 1",
+        displayText: "Header-1 text",
         order: 1,
         subheaders: [subheaders[0]._id],
         buttons: [baseButtons[0]._id, subButtons[0]._id],
       },
       {
         title: "Header 2",
+        displayText: "Header-2 text",
         order: 2,
         subheaders: [subheaders[1]._id],
         buttons: [baseButtons[1]._id, advancedButtons[0]._id],
       },
       {
         title: "Header 3",
+        displayText: "Header-3 text",
         order: 3,
         subheaders: [],
         buttons: [baseButtons[2]._id],
@@ -509,7 +592,7 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
       message: "Complex dummy data populated successfully",
       data: populatedPage,
     });
-  } catch (error : any) {
+  } catch (error: any) {
     console.error("Error populating complex dummy data:", error);
     res.status(500).json({
       message: "Error populating complex dummy data",

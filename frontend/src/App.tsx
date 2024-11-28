@@ -4,7 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import Navbar from "./components/Navbar";
 import { Toaster } from "./components/ui/sonner";
-import CreatePage from "./pages/CreatePage";
+// import CreatePage from "./pages/CreatePage";
 import PageDetails from "./components/PageDetails";
 
 function App() {
@@ -22,7 +22,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/page/:pageId" element={<PageDetails />} />
-        <Route path="/create-page" element={<CreatePage />} />
+        {/* <Route path="/create-page" element={<CreatePage />} /> */}
       </Routes>
       <Toaster />
     </BrowserRouter>

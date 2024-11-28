@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Brain, FileText, LogOut, PlusCircle } from "lucide-react";
+import { Brain, FileText, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BACKEND_URL } from "@/config/config";
 import axios from "axios";
@@ -91,14 +91,14 @@ const Navbar = () => {
                     </ScrollArea>
                   </CardContent>
                 </Card>
-                <Button
+                {/* <Button
                   size="sm"
                   className=" text-white"
                   onClick={() => navigate("/create-page")}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Create Page
-                </Button>
+                </Button> */}
                 <Button size="sm" variant="destructive" onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out

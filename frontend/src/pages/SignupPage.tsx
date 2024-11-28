@@ -13,8 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import axios from "axios"
+import axios from "axios";
 import { BACKEND_URL } from "@/config/config";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const signUpFormSchema = z.object({
   username: z.string().min(2, {
@@ -27,6 +29,7 @@ const signUpFormSchema = z.object({
 });
 
 const SignupPage = () => {
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const form = useForm<z.infer<typeof signUpFormSchema>>({
     resolver: zodResolver(signUpFormSchema),
@@ -38,16 +41,21 @@ const SignupPage = () => {
   });
 
   async function onSubmit(values: z.infer<typeof signUpFormSchema>) {
+    setIsLoading(true);
     try {
       const res = await axios.post(`${BACKEND_URL}/user/signup`, {
-        username : values.username,
-        password : values.password,
-        email : values.email
-      })
-      toast.success(res.data.message, {description : "Now login with your credentials"});
-      navigate('/login');
-    } catch (error : any) {
+        username: values.username,
+        password: values.password,
+        email: values.email,
+      });
+      toast.success(res.data.message, {
+        description: "Now login with your credentials",
+      });
+      navigate("/login");
+    } catch (error: any) {
       toast.error(error.response.data.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -55,7 +63,9 @@ const SignupPage = () => {
     <div className="flex flex-col items-center justify-center h-screen px-6 py-3">
       <div className="w-[450px] flex flex-col items-center border border-black/25 rounded-xl shadow-xl p-5">
         <h1 className="font-bold text-3xl text-black my-2">Join Now</h1>
-        <p className="font-semibold text-xl text-gray-500 my-2">Create an Account</p>
+        <p className="font-semibold text-xl text-gray-500 my-2">
+          Create an Account
+        </p>
         <div className="w-full p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -98,13 +108,31 @@ const SignupPage = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Submit</Button>
+              <Button
+                disabled={isLoading}
+                className={`${isLoading ? "bg-gray-400" : ""}`}
+                type="submit"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin" />
+                    Loading...
+                  </div>
+                ) : (
+                  <div>Submit</div>
+                )}
+              </Button>
             </form>
           </Form>
         </div>
         <div className="flex items-center gap-1.5">
-            <span className="font-sans">Already have an Account?</span>
-            <Link className="text-blue-500 underline hover:text-blue-500" to={'/login'}>Login</Link>
+          <span className="font-sans">Already have an Account?</span>
+          <Link
+            className="text-blue-500 underline hover:text-blue-500"
+            to={"/login"}
+          >
+            Login
+          </Link>
         </div>
       </div>
     </div>

@@ -15,6 +15,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
 import { BACKEND_URL } from "@/config/config";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const logInFormSchema = z.object({
   username: z.string(),
@@ -23,6 +25,7 @@ const logInFormSchema = z.object({
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [isLoading, setisLoading] = useState(false);
   const form = useForm<z.infer<typeof logInFormSchema>>({
     resolver: zodResolver(logInFormSchema),
     defaultValues: {
@@ -32,6 +35,7 @@ const LoginPage = () => {
   });
 
   async function onSubmit(values: z.infer<typeof logInFormSchema>) {
+    setisLoading(true);
     try {
       const res = await axios.post(`${BACKEND_URL}/user/login`, {
         username : values.username,
@@ -42,6 +46,8 @@ const LoginPage = () => {
       navigate('/dashboard');
     } catch (error : any) {
       toast.error(error.response.data.message);
+    } finally {
+      setisLoading(false);
     }
   }
 
@@ -79,7 +85,18 @@ const LoginPage = () => {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Submit</Button>
+              <Button disabled={isLoading} className={`${isLoading ? 'bg-gray-400' : '' }`} type="submit">
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin"/>
+                    Loading...
+                  </div>
+                ) : (
+                  <div className="">
+                      Submit
+                  </div>                  
+                )}
+              </Button>
             </form>
           </Form>
         </div>

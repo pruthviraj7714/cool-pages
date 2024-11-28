@@ -1,1 +1,1 @@
-{"root":["./src/db.ts","./src/index.ts","./src/middleware.ts","./src/models/page.ts","./src/models/user.ts","./src/routers/pagerouter.ts","./src/routers/userrouter.ts","./src/types/schema.ts"],"version":"5.6.3"}
+{"root":["./src/db.ts","./src/index.ts","./src/middleware.ts","./src/models/page.ts","./src/models/user.ts","./src/routers/pagerouter.ts","./src/routers/userrouter.ts","./src/types/schema.ts"],"version":"5.7.2"}

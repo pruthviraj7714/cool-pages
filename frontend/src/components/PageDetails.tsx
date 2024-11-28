@@ -86,7 +86,6 @@ function PageDetails() {
         const newText = `${header.displayText}:${text ? `\n${text}` : ""}`;
         textboxRef.current.value = newText;
       } else {
-       
         const newText = text
           ? `${text}\n${header.displayText}:`
           : `${header.displayText}:`;
@@ -107,28 +106,24 @@ function PageDetails() {
     const lines = text.split("\n");
     if (text.includes(subheader.title)) return;
 
+    console.log(lines);
     const headerIndex = lines.findIndex(
-      (line) => line.trim() === header.displayText
+      (line) => line.trim() === `${header.displayText}:`
     );
 
-
     if (headerIndex !== -1) {
-      // Check if subheader already exists
       const subheaderExists = lines.some((line) =>
-        line.trim().startsWith(`  ${subheader.title}`)
+        line.trim().includes(`${subheader.title}:`)
       );
 
       if (!subheaderExists) {
-        // Find the correct position to insert subheader
         const orderedSubheaders = header.subheaders
           ?.sort((a, b) => a.order - b.order)
           .filter(
-            (sh) =>
-              !lines.some((line) => line.trim().startsWith(`  ${sh.title}`))
+            (sh) => !lines.some((line) => line.trim().includes(`${sh.title}`))
           );
 
         if (orderedSubheaders && orderedSubheaders[0] === subheader) {
-          // Insert at the first position after the header
           lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
         } else {
           // Find the last existing subheader and insert after it
@@ -144,7 +139,6 @@ function PageDetails() {
               `  ${subheader.title}:`
             );
           } else {
-            // If no subheaders exist, insert right after header
             lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
           }
         }
@@ -153,11 +147,9 @@ function PageDetails() {
         updateHistory(textboxRef.current.value);
       }
     } else {
-      textboxRef.current.value = `${text}\n${subheader.title}:`;
-      // const newText = text
-      //   ? `${text}\n${header.displayText}:\n  ${subheader.title}:`
-      //   : `${header.displayText}:\n  ${subheader.title}:`;
-      // textboxRef.current.value = newText;
+      textboxRef.current.value = text
+        ? `${text}\n${subheader.title}:`
+        : subheader.title;
       updateHistory(textboxRef.current.value);
     }
   };
@@ -166,136 +158,145 @@ function PageDetails() {
     e.preventDefault();
     if (!textboxRef.current) return;
 
+    console.log(textboxRef.current.value);
+    if (textboxRef.current.value.includes(btn?.onLeftClickOutput as string))
+      return;
+
     const text = textboxRef.current.value;
     const lines = text.split("\n");
-    const buttonText = btn.onLeftClickOutput || btn.displayText;
+    const buttonText = btn?.onLeftClickOutput;
 
-    const header = pageDetails?.headers?.find((h) => h.buttons?.includes(btn));
-    const subheader = pageDetails?.headers
-      ?.flatMap((h) => h.subheaders || [])
-      .find((sh) => sh.buttons?.includes(btn));
-
-    if (subheader) {
-      const parentHeader = pageDetails?.headers?.find((h) =>
-        h.subheaders?.includes(subheader)
+    if (buttonText) {
+      const header = pageDetails?.headers?.find((h) =>
+        h.buttons?.includes(btn)
       );
+      const subheader = pageDetails?.headers
+        ?.flatMap((h) => h.subheaders || [])
+        .find((sh) => sh.buttons?.includes(btn));
 
-      if (parentHeader) {
-        const headerText = parentHeader.displayText;
-        const subheaderText = subheader.title;
-
-        const subheaderIndex = lines.findIndex((line) =>
-          line.trim().startsWith(`  ${subheaderText}`)
+      if (subheader) {
+        const parentHeader = pageDetails?.headers?.find((h) =>
+          h.subheaders?.includes(subheader)
         );
 
-        if (subheaderIndex !== -1) {
-          // Append button text to existing subheader
-          lines[subheaderIndex] += ` ${buttonText}`;
-        } else {
-          const headerIndex = lines.findIndex(
-            (line) => line.trim() === headerText
+        if (parentHeader) {
+          const headerText = parentHeader.displayText;
+          const subheaderText = subheader.title;
+
+          const subheaderIndex = lines.findIndex((line) =>
+            line.trim().includes(`${subheaderText}`)
           );
 
-          if (headerIndex !== -1) {
-            // Add subheader with button text below header
-            lines.splice(
-              headerIndex + 1,
-              0,
-              `  ${subheaderText}: ${buttonText}`
-            );
+          if (subheaderIndex !== -1) {
+            lines[subheaderIndex] += ` ${buttonText};`;
           } else {
-            // Add header and subheader with button text
-            lines.push(`${headerText}:`, `  ${subheaderText}: ${buttonText}`);
+            const headerIndex = lines.findIndex(
+              (line) => line.trim() === headerText
+            );
+
+            if (headerIndex !== -1) {
+              lines.splice(
+                headerIndex + 1,
+                0,
+                `  ${subheaderText}: ${buttonText};`
+              );
+            } else {
+              lines.push(`${buttonText};`);
+            }
           }
         }
-      }
-    } else if (header) {
-      const headerText = header.displayText;
-      const headerIndex = lines.findIndex((line) => line.trim() === headerText);
+      } else if (header) {
+        const headerText = header.displayText;
+        const headerIndex = lines.findIndex(
+          (line) => line.trim() === `${headerText}:`
+        );
 
-      if (headerIndex !== -1) {
-        // Append button text to existing header
-        lines[headerIndex] += ` ${buttonText}`;
+        if (headerIndex !== -1) {
+          lines[headerIndex] += ` ${buttonText};`;
+        } else {
+          lines.push(`${buttonText};`);
+        }
       } else {
-        // Add header with button text
-        lines.push(`${headerText}: ${buttonText}`);
+        if (buttonText) {
+          lines.push(buttonText) + ";";
+        }
       }
-    } else {
-      // No context, add button directly
-      lines.push(buttonText);
+
+      textboxRef.current.value = lines.join("\n");
     }
 
-    textboxRef.current.value = lines.join("\n");
     updateHistory(textboxRef.current.value);
   };
 
   const handleRightClick = (btn: ButtonSchema, e: React.MouseEvent) => {
-    e.preventDefault();
     document.addEventListener("contextmenu", (event) => event.preventDefault());
 
     if (!textboxRef.current) return;
 
+    if (textboxRef.current.value.includes(btn?.onRightClickOutput as string))
+      return;
+
     const text = textboxRef.current.value;
-    const buttonText = btn.onRightClickOutput || btn.displayText;
+    if (text.includes(btn.displayText)) return;
+    const buttonText = btn?.onRightClickOutput;
 
-    const header = pageDetails?.headers?.find((h) => h.buttons?.includes(btn));
-    const subheader = pageDetails?.headers
-      ?.flatMap((h) => h.subheaders || [])
-      .find((sh) => sh.buttons?.includes(btn));
-
-    const lines = text.split("\n");
-
-    if (subheader) {
-      const parentHeader = pageDetails?.headers?.find((h) =>
-        h.subheaders?.includes(subheader)
+    if (buttonText) {
+      const header = pageDetails?.headers?.find((h) =>
+        h.buttons?.includes(btn)
       );
+      const subheader = pageDetails?.headers
+        ?.flatMap((h) => h.subheaders || [])
+        .find((sh) => sh.buttons?.includes(btn));
 
-      if (parentHeader) {
-        const headerText = parentHeader.displayText;
-        const subheaderText = subheader.title;
+      const lines = text.split("\n");
 
-        const subheaderIndex = lines.findIndex((line) =>
-          line.trim().startsWith(`  ${subheaderText}`)
+      if (subheader) {
+        const parentHeader = pageDetails?.headers?.find((h) =>
+          h.subheaders?.includes(subheader)
         );
 
-        if (subheaderIndex !== -1) {
-          // Replace existing subheader text with button text
-          lines[subheaderIndex] = `  ${subheaderText}: ${buttonText}`;
-        } else {
-          const headerIndex = lines.findIndex(
-            (line) => line.trim() === headerText
+        if (parentHeader) {
+          const headerText = parentHeader.displayText;
+          const subheaderText = subheader.title;
+
+          const subheaderIndex = lines.findIndex((line) =>
+            line.trim().includes(`${subheaderText}`)
           );
 
-          if (headerIndex !== -1) {
-            // Insert new subheader with button text below header
-            lines.splice(
-              headerIndex + 1,
-              0,
-              `  ${subheaderText}: ${buttonText}`
-            );
+          if (subheaderIndex !== -1) {
+            lines[subheaderIndex] = `  ${subheaderText}: ${buttonText};`;
           } else {
-            // Add header and subheader with button text
-            lines.push(`${headerText}:`, `  ${subheaderText}: ${buttonText}`);
+            const headerIndex = lines.findIndex(
+              (line) => line.trim() === `${headerText}:`
+            );
+
+            if (headerIndex !== -1) {
+              lines.splice(
+                headerIndex + 1,
+                0,
+                `  ${subheaderText}: ${buttonText};`
+              );
+            } else {
+              lines.push(`${buttonText};`);
+            }
           }
         }
-      }
-    } else if (header) {
-      const headerText = header.displayText;
-      const headerIndex = lines.findIndex((line) => line.trim() === headerText);
+      } else if (header) {
+        const headerText = header.displayText;
+        const headerIndex = lines.findIndex(
+          (line) => line.trim() === `${headerText}:`
+        );
 
-      if (headerIndex !== -1) {
-        // Replace existing header text with button text
-        lines[headerIndex] = `${headerText}: ${buttonText}`;
+        if (headerIndex !== -1) {
+          lines[headerIndex] = `${headerText}: ${buttonText};`;
+        } else {
+          lines.push(`${buttonText};`);
+        }
       } else {
-        // Add header with button text
-        lines.push(`${headerText}: ${buttonText}`);
+        lines.push(buttonText + ";");
       }
-    } else {
-      // No context, add button directly
-      lines.push(buttonText);
+      textboxRef.current.value = lines.join("\n");
     }
-
-    textboxRef.current.value = lines.join("\n");
     updateHistory(textboxRef.current.value);
   };
 

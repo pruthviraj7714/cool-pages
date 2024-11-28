@@ -1,10 +1,12 @@
 import mongoose from "mongoose";
 
+const MONGODB_URL = process.env.MONGODB_URI ?? "";
+
 mongoose
-  .connect('mongodb://localhost:27017/backend')
+  .connect(MONGODB_URL)
   .then(() => {
-    console.log('Connected to MongoDB');
+    console.log("Connected to MongoDB");
   })
   .catch((err) => {
-    console.error('Database connection error:', err);
+    console.error("Database connection error:", err);
   });

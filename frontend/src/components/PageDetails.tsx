@@ -228,7 +228,7 @@ function PageDetails() {
     updateHistory(textboxRef.current.value);
   };
 
-  const handleRightClick = (btn: ButtonSchema, e: React.MouseEvent) => {
+  const handleRightClick = (btn: ButtonSchema) => {
     document.addEventListener("contextmenu", (event) => event.preventDefault());
 
     if (!textboxRef.current) return;

@@ -5,7 +5,6 @@ import { Button, Header, Page, SubHeader } from "../models/page";
 
 export const pageRouter = Router();
 
-
 async function createButton(
   buttonData: any,
   parentRef: any,
@@ -527,7 +526,7 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
 
     const subheaders = await SubHeader.create([
       {
-        title: "SubHeader 1",
+        title: "SubHeader 1.1",
         order: 1,
         buttons: [subButtons[0]._id, baseButtons[0]._id],
       },
@@ -540,6 +539,21 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
           advancedButtons[0]._id,
         ],
       },
+      {
+        title: "SubHeader 1.2",
+        order: 2,
+        buttons: [subButtons[0]._id, baseButtons[0]._id],
+      },
+      {
+        title: "SubHeader 1.3",
+        order: 3,
+        buttons: [],
+      },
+      {
+        title: "SubHeader 1.4",
+        order: 4,
+        buttons: [],
+      },
     ]);
 
     const headers = await Header.create([
@@ -547,7 +561,12 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
         title: "Header 1",
         displayText: "Header-1 text",
         order: 1,
-        subheaders: [subheaders[0]._id],
+        subheaders: [
+          subheaders[0]._id,
+          subheaders[2]._id,
+          subheaders[3]._id,
+          subheaders[4]._id,
+        ],
         buttons: [baseButtons[0]._id, subButtons[0]._id],
       },
       {
@@ -564,10 +583,24 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
         subheaders: [],
         buttons: [baseButtons[2]._id],
       },
+      {
+        title: "Header 4",
+        displayText: "Header-4 text",
+        order: 4,
+        subheaders: [],
+        buttons: [],
+      },
+      {
+        title: "Header 5",
+        displayText: "Header-5 text",
+        order: 5,
+        subheaders: [],
+        buttons: [],
+      },
     ]);
 
     const page = await Page.create({
-      title: "Main Page with Nested Data",
+      title: "Main Page",
       headers: headers.map((header) => header._id),
     });
 

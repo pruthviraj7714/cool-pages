@@ -405,11 +405,17 @@ pageRouter.get(
         .populate("subheaderId")
         .populate({
           path: "leftClickSubOptions",
-          populate: [{ path: "headerId" }, { path: "subheaderId" }],
+          populate: [
+            { path: "headerId"},
+            { path: "subheaderId" },
+          ],
         })
         .populate({
           path: "rightClickSubOptions",
-          populate: [{ path: "headerId" }, { path: "subheaderId" }],
+          populate: [
+            { path: "headerId" },
+            { path: "subheaderId" },
+          ],
         });
 
       if (populatedButton?.leftClickSubOptions) {
@@ -434,37 +440,18 @@ pageRouter.get(
         path: "headers",
         populate: [
           {
-            path: "buttons",
-            populate: [{ path: "headerId" }, { path: "subheaderId" }],
-          },
-          {
             path: "subheaders",
             populate: {
               path: "buttons",
-              populate: [{ path: "headerId" }, { path: "subheaderId" }],
+              populate: ["leftClickSubOptions", "rightClickSubOptions"],
             },
+          },
+          {
+            path: "buttons",
+            populate: ["leftClickSubOptions", "rightClickSubOptions"],
           },
         ],
       });
-
-      if (!page) {
-        return res.status(404).json({ message: "Page not found" });
-      }
-
-      for (let header of page.headers) {
-        //@ts-ignore
-        header?.buttons = await Promise.all(
-          //@ts-ignore
-          header?.buttons.map(populateButtonRecursively)
-        );
-
-        //@ts-ignore
-        for (let subheader of header?.subheaders) {
-          subheader.buttons = await Promise.all(
-            subheader.buttons.map(populateButtonRecursively)
-          );
-        }
-      }
 
       res.json({ page });
     } catch (error: any) {
@@ -478,6 +465,7 @@ pageRouter.get(
 
 pageRouter.post("/populate-dummy-data", async (req, res) => {
   try {
+    // Delete all existing data
     await Promise.all([
       Page.deleteMany({}),
       Header.deleteMany({}),
@@ -485,151 +473,97 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
       Button.deleteMany({}),
     ]);
 
-    const baseButtons = await Button.create([
-      {
-        displayText: "Base Button 1",
-        onLeftClickOutput: "Left Click Output 1",
-        onRightClickOutput: "Right Click Output 1",
-      },
-      {
-        displayText: "Base Button 2",
-        onLeftClickOutput: "Left Click Output 2",
-        onRightClickOutput: "Right Click Output 2",
-      },
-      {
-        displayText: "Base Button 3",
-        onLeftClickOutput: "Left Click Output 3",
-        onRightClickOutput: "Right Click Output 3",
-      },
-    ]);
-
-    const subButtons = await Button.create([
-      {
-        displayText: "Sub Button 1",
-        onRightClickOutput: "Sub Right Click 1",
-        leftClickSubOptions: [baseButtons[0]._id, baseButtons[1]._id],
-      },
-      {
-        displayText: "Sub Button 2",
-        onLeftClickOutput: "Sub Left Click 2",
-        rightClickSubOptions: [baseButtons[0]._id, baseButtons[2]._id],
-      },
-    ]);
-
-    const advancedButtons = await Button.create([
-      {
-        displayText: "Advanced Button 1",
-        leftClickSubOptions: [subButtons[0]._id],
-        rightClickSubOptions: [subButtons[1]._id],
-      },
-    ]);
-
-    const subheaders = await SubHeader.create([
-      {
-        title: "SubHeader 1.1",
-        order: 1,
-        buttons: [subButtons[0]._id, baseButtons[0]._id],
-      },
-      {
-        title: "SubHeader 2",
-        order: 2,
-        buttons: [
-          subButtons[1]._id,
-          baseButtons[1]._id,
-          advancedButtons[0]._id,
-        ],
-      },
-      {
-        title: "SubHeader 1.2",
-        order: 2,
-        buttons: [subButtons[0]._id, baseButtons[0]._id],
-      },
-      {
-        title: "SubHeader 1.3",
-        order: 3,
-        buttons: [],
-      },
-      {
-        title: "SubHeader 1.4",
-        order: 4,
-        buttons: [],
-      },
-    ]);
-
+    // Create headers
     const headers = await Header.create([
-      {
-        title: "Header 1",
-        displayText: "Header-1 text",
-        order: 1,
-        subheaders: [
-          subheaders[0]._id,
-          subheaders[2]._id,
-          subheaders[3]._id,
-          subheaders[4]._id,
-        ],
-        buttons: [baseButtons[0]._id, subButtons[0]._id],
-      },
-      {
-        title: "Header 2",
-        displayText: "Header-2 text",
-        order: 2,
-        subheaders: [subheaders[1]._id],
-        buttons: [baseButtons[1]._id, advancedButtons[0]._id],
-      },
-      {
-        title: "Header 3",
-        displayText: "Header-3 text",
-        order: 3,
-        subheaders: [],
-        buttons: [baseButtons[2]._id],
-      },
-      {
-        title: "Header 4",
-        displayText: "Header-4 text",
-        order: 4,
-        subheaders: [],
-        buttons: [],
-      },
-      {
-        title: "Header 5",
-        displayText: "Header-5 text",
-        order: 5,
-        subheaders: [],
-        buttons: [],
-      },
+      { title: "Header 1", displayText: "Header-1 text", order: 1 },
+      { title: "Header 2", displayText: "Header-2 text", order: 2 },
+      { title: "Header 3", displayText: "Header-3 text", order: 3 },
+      { title: "Header 4", displayText: "Header-4 text", order: 4 },
+      { title: "Header 5", displayText: "Header-5 text", order: 5 },
     ]);
 
+    // Create subheaders
+    const subheaders = await SubHeader.create([
+      { title: "SubHeader 1.1", order: 1 },
+      { title: "SubHeader 1.2", order: 2 },
+      { title: "SubHeader 2.1", order: 3 },
+      { title: "SubHeader 3.1", order: 4 },
+      { title: "SubHeader 4.1", order: 5 },
+    ]);
+
+    // Create buttons for headers
+    const headerButtons = await Button.create([
+      { displayText: "Header 1 Button", onLeftClickOutput: "Header 1 Left Click", onRightClickOutput: "Header 1 Right Click", headerId: headers[0]._id },
+      { displayText: "Header 2 Button", onLeftClickOutput: "Header 2 Left Click", onRightClickOutput: "Header 2 Right Click", headerId: headers[1]._id },
+      { displayText: "Header 3 Button", onLeftClickOutput: "Header 3 Left Click", onRightClickOutput: "Header 3 Right Click", headerId: headers[2]._id },
+      { displayText: "Header 4 Button", onLeftClickOutput: "Header 4 Left Click", onRightClickOutput: "Header 4 Right Click", headerId: headers[3]._id },
+      { displayText: "Header 5 Button", onLeftClickOutput: "Header 5 Left Click", onRightClickOutput: "Header 5 Right Click", headerId: headers[4]._id },
+    ]);
+
+    // Create unique buttons for subheaders
+    const subheaderButtons = await Button.create([
+      { displayText: "SubHeader 1.1 Button", onRightClickOutput: "SubHeader 1.1 Right Click", subheaderId: subheaders[0]._id },
+      { displayText: "SubHeader 1.2 Button", onLeftClickOutput: "SubHeader 1.2 Left Click", subheaderId: subheaders[1]._id },
+      { displayText: "SubHeader 2.1 Button", onLeftClickOutput: "SubHeader 2.1 Left Click", subheaderId: subheaders[2]._id },
+      { displayText: "SubHeader 3.1 Button", onRightClickOutput: "SubHeader 3.1 Right Click", subheaderId: subheaders[3]._id },
+      { displayText: "SubHeader 4.1 Button", onLeftClickOutput: "SubHeader 4.1 Left Click", subheaderId: subheaders[4]._id },
+    ]);
+
+    // Create unique advanced buttons
+    const advancedButtons = await Button.create([
+      { displayText: "Advanced Button 1", leftClickSubOptions: [subheaderButtons[0]._id], rightClickSubOptions: [subheaderButtons[1]._id], subheaderId: subheaders[2]._id },
+      { displayText: "Advanced Button 2", leftClickSubOptions: [subheaderButtons[2]._id], rightClickSubOptions: [subheaderButtons[3]._id], subheaderId: subheaders[3]._id },
+    ]);
+
+    // Assign subheaders and buttons to headers
+    headers[0].subheaders = [subheaders[0]._id, subheaders[1]._id];
+    headers[0].buttons = [headerButtons[0]._id];
+    headers[1].subheaders = [subheaders[2]._id];
+    headers[1].buttons = [headerButtons[1]._id];
+    headers[2].subheaders = [subheaders[3]._id];
+    headers[2].buttons = [headerButtons[2]._id];
+    headers[3].subheaders = [subheaders[4]._id];
+    headers[3].buttons = [headerButtons[3]._id];
+    headers[4].buttons = [headerButtons[4]._id];
+    await Promise.all(headers.map((header) => header.save()));
+
+    // Assign buttons to subheaders
+    subheaders[0].buttons = [subheaderButtons[0]._id];
+    subheaders[1].buttons = [subheaderButtons[1]._id];
+    subheaders[2].buttons = [subheaderButtons[2]._id, advancedButtons[0]._id];
+    subheaders[3].buttons = [subheaderButtons[3]._id, advancedButtons[1]._id];
+    subheaders[4].buttons = [subheaderButtons[4]._id];
+    await Promise.all(subheaders.map((subheader) => subheader.save()));
+
+    // Create the main page
     const page = await Page.create({
       title: "Main Page",
       headers: headers.map((header) => header._id),
     });
 
+    // Populate all relationships for response
     const populatedPage = await Page.findById(page._id).populate({
       path: "headers",
       populate: [
         {
           path: "subheaders",
-          populate: {
-            path: "buttons",
-            populate: ["leftClickSubOptions", "rightClickSubOptions"],
-          },
+          populate: { path: "buttons", populate: ["leftClickSubOptions", "rightClickSubOptions"] },
         },
-        {
-          path: "buttons",
-          populate: ["leftClickSubOptions", "rightClickSubOptions"],
-        },
+        { path: "buttons", populate: ["leftClickSubOptions", "rightClickSubOptions"] },
       ],
     });
 
     res.json({
-      message: "Complex dummy data populated successfully",
+      message: "Unique dummy data populated successfully",
       data: populatedPage,
     });
-  } catch (error: any) {
-    console.error("Error populating complex dummy data:", error);
+  } catch (error : any) {
+    console.error("Error populating dummy data:", error);
     res.status(500).json({
-      message: "Error populating complex dummy data",
+      message: "Error populating dummy data",
       error: error.message,
     });
   }
 });
+
+

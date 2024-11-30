@@ -68,32 +68,41 @@ function PageDetails() {
   const handleHeaderClick = (header: HeaderSchema) => {
     if (!textboxRef.current) return;
 
-    const text = textboxRef.current.value;
-    const lines = text.split("\n");
+    const text = textboxRef.current.value.trim();
 
-    if (text.includes(header.displayText)) return;
+    const lines = text.split("\n").filter((line) => line.trim() !== "");
 
-    const headerIndex = lines.findIndex(
-      (line) => line.trim() === header.displayText
-    );
+    const headerSubheadersMap = new Map();
 
-    if (headerIndex === -1) {
-      const orderedHeaders = pageDetails?.headers
-        ?.sort((a, b) => a.order - b.order)
-        .filter((h) => !lines.some((line) => line.trim() === h.displayText));
+    let currentHeader = null;
 
-      if (orderedHeaders && orderedHeaders[0] === header) {
-        const newText = `${header.displayText}:${text ? `\n${text}` : ""}`;
-        textboxRef.current.value = newText;
-      } else {
-        const newText = text
-          ? `${text}\n${header.displayText}:`
-          : `${header.displayText}:`;
-        textboxRef.current.value = newText;
+    for (const line of lines) {
+      if (!line.startsWith("  ")) {
+        currentHeader = line.trim().replace(":", "");
+        headerSubheadersMap.set(currentHeader, []);
+      } else if (currentHeader) {
+        headerSubheadersMap.get(currentHeader).push(line);
       }
-
-      updateHistory(textboxRef.current.value);
     }
+
+    if (!headerSubheadersMap.has(header.displayText)) {
+      headerSubheadersMap.set(header.displayText, []);
+    }
+
+    const sortedHeaders =
+      pageDetails?.headers?.sort((a, b) => a.order - b.order) || [];
+
+    const updatedLines = [];
+    for (const sortedHeader of sortedHeaders) {
+      if (headerSubheadersMap.has(sortedHeader.displayText)) {
+        updatedLines.push(`${sortedHeader.displayText}:`);
+        updatedLines.push(
+          ...(headerSubheadersMap.get(sortedHeader.displayText) || [])
+        );
+      }
+    }
+
+    textboxRef.current.value = updatedLines.join("\n").trim();
   };
 
   const handleSubHeaderClick = (
@@ -104,54 +113,49 @@ function PageDetails() {
 
     const text = textboxRef.current.value;
     const lines = text.split("\n");
-    if (text.includes(subheader.title)) return;
 
-    console.log(lines);
-    const headerIndex = lines.findIndex(
-      (line) => line.trim() === `${header.displayText}:`
+    if (text.includes(`${subheader.title}:`)) return;
+
+    const headerIndex = lines.findIndex((line) =>
+      line.trim().startsWith(header.displayText)
     );
 
-    if (headerIndex !== -1) {
-      const subheaderExists = lines.some((line) =>
-        line.trim().includes(`${subheader.title}:`)
+    if (headerIndex === -1) {
+      lines.push(`${subheader.title}:`);
+    } else {
+      const nextHeaderIndex = lines.findIndex(
+        (line, index) => index > headerIndex && !line.startsWith("  ")
       );
 
-      if (!subheaderExists) {
-        const orderedSubheaders = header.subheaders
-          ?.sort((a, b) => a.order - b.order)
-          .filter(
-            (sh) => !lines.some((line) => line.trim().includes(`${sh.title}`))
-          );
+      const existingSubheaders = lines
+        .slice(
+          headerIndex + 1,
+          nextHeaderIndex === -1 ? undefined : nextHeaderIndex
+        )
+        .map((line) => line.trim().replace(":", ""));
 
-        if (orderedSubheaders && orderedSubheaders[0] === subheader) {
-          lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
-        } else {
-          // Find the last existing subheader and insert after it
-          const lastSubheaderIndex = lines
-            .slice(headerIndex + 1)
-            //@ts-ignore
-            .findLastIndex((line) => line.trim().startsWith("  "));
+      const allSubheaders = (header.subheaders || []).sort(
+        (a, b) => a.order - b.order
+      );
 
-          if (lastSubheaderIndex !== -1) {
-            lines.splice(
-              headerIndex + 1 + lastSubheaderIndex + 1,
-              0,
-              `  ${subheader.title}:`
-            );
-          } else {
-            lines.splice(headerIndex + 1, 0, `  ${subheader.title}:`);
-          }
-        }
-
-        textboxRef.current.value = lines.join("\n");
-        updateHistory(textboxRef.current.value);
+      if (!existingSubheaders.includes(subheader.title)) {
+        existingSubheaders.push(subheader.title);
       }
-    } else {
-      textboxRef.current.value = text
-        ? `${text}\n${subheader.title}:`
-        : subheader.title;
-      updateHistory(textboxRef.current.value);
+
+      const sortedSubheaders = allSubheaders
+        .filter((sh) => existingSubheaders.includes(sh.title))
+        .map((sh) => `  ${sh.title}:`);
+
+      lines.splice(
+        headerIndex + 1,
+        //@ts-ignore
+        nextHeaderIndex === -1 ? undefined : nextHeaderIndex - headerIndex - 1,
+        ...sortedSubheaders
+      );
     }
+
+    textboxRef.current.value = lines.join("\n");
+    updateHistory(textboxRef.current.value);
   };
 
   const handleLeftClick = (btn: ButtonSchema, e: React.MouseEvent) => {
@@ -299,7 +303,6 @@ function PageDetails() {
     }
     updateHistory(textboxRef.current.value);
   };
-
   const handleUndo = () => {
     if (currentIndex > 0) {
       setIsUndoRedoAction(true);
@@ -415,22 +418,22 @@ function PageDetails() {
         <section className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
           {pageDetails?.headers
             ?.sort((a, b) => a.order - b.order)
-            .map((header: any) => (
+            .map((header: HeaderSchema) => (
               <HeaderCard
+                key={header.displayText}
                 header={header}
                 handleLeftClick={handleLeftClick}
                 handleRightClick={handleRightClick}
                 //@ts-ignore
                 handleHeaderClick={(header: HeaderSchema) => {
-                  handleHeaderClick(header), console.log(header);
+                  handleHeaderClick(header);
                 }}
                 //@ts-ignore
                 handleSubHeaderClick={(
                   header: HeaderSchema,
                   subheader: SubHeaderSchema
                 ) => {
-                  handleSubHeaderClick(header, subheader),
-                    console.log(subheader);
+                  handleSubHeaderClick(header, subheader);
                 }}
               />
             ))}

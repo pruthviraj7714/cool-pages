@@ -48,9 +48,9 @@ const Navbar = () => {
   }, [isLoggedIn]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b text-black">
+    <header className="w-full border-b shadow-lg text-black">
       <div className="px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
             <Brain />
             <span className="hidden font-bold text-xl sm:inline-block">

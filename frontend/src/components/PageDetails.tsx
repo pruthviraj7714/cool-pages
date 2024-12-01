@@ -70,37 +70,43 @@ function PageDetails() {
 
     const text = textboxRef.current.value.trim();
 
-    if (text.includes(header.displayText)) return;
+    if (text.includes(`${header.displayText}:`)) return;
 
     const lines = text.split("\n").filter((line) => line.trim() !== "");
 
-    const headerSubheadersMap = new Map();
+    const headerSubheadersMap = new Map<string, string>();
 
-    let currentHeader = null;
+    let currentHeader: string | null = null;
 
     for (const line of lines) {
       if (!line.startsWith("  ")) {
-        currentHeader = line.trim().replace(":", "");
-        headerSubheadersMap.set(currentHeader, []);
+        const [headerText, additionalText] = line
+          .split(":")
+          .map((part) => part.trim());
+        currentHeader = headerText;
+        headerSubheadersMap.set(
+          currentHeader,
+          additionalText ? `${additionalText}:` : ""
+        );
       } else if (currentHeader) {
-        headerSubheadersMap.get(currentHeader).push(line);
+        const existingContent = headerSubheadersMap.get(currentHeader) || "";
+        headerSubheadersMap.set(currentHeader, `${existingContent}\n${line}`);
       }
     }
 
     if (!headerSubheadersMap.has(header.displayText)) {
-      headerSubheadersMap.set(header.displayText, []);
+      headerSubheadersMap.set(header.displayText, "");
     }
 
     const sortedHeaders =
       pageDetails?.headers?.sort((a, b) => a.order - b.order) || [];
 
-    const updatedLines = [];
+    const updatedLines: string[] = [];
     for (const sortedHeader of sortedHeaders) {
       if (headerSubheadersMap.has(sortedHeader.displayText)) {
-        updatedLines.push(`${sortedHeader.displayText}:`);
-        updatedLines.push(
-          ...(headerSubheadersMap.get(sortedHeader.displayText) || [])
-        );
+        const headerContent =
+          headerSubheadersMap.get(sortedHeader.displayText) || "";
+        updatedLines.push(`${sortedHeader.displayText}:${headerContent}`);
       }
     }
 
@@ -112,55 +118,67 @@ function PageDetails() {
     subheader: SubHeaderSchema
   ) => {
     if (!textboxRef.current || !header || !subheader) return;
-  
+
     const text = textboxRef.current.value;
     const lines = text.split("\n");
-  
-    // If the subheader already exists, do nothing
-    if (text.includes(`${subheader.title}:`)) return;
-  
-    // Find the index of the header
-    const headerIndex = lines.findIndex((line) =>
-      line.trim().startsWith(header.displayText)
+
+    const subheaderExists = lines.some((line) =>
+      line.trim().includes(`${subheader.title}`)
     );
-  
+    if (subheaderExists) return;
+
+    const headerIndex = lines.findIndex((line) =>
+      line.trim().includes(`${header.displayText}`)
+    );
+
     if (headerIndex === -1) {
-      // Header doesn't exist, add the subheader as a new line
       lines.push(`${subheader.title}:`);
     } else {
-      // Find the next header's index or end of the text
       const nextHeaderIndex = lines.findIndex(
         (line, index) => index > headerIndex && !line.startsWith("  ")
       );
-  
-      // Extract existing subheaders under this header
-      const existingSubheaders = lines
-        .slice(
-          headerIndex + 1,
-          nextHeaderIndex === -1 ? undefined : nextHeaderIndex
-        )
-        .map((line) => line.trim().replace(":", ""));
-  
-      // Ensure the new subheader is added
-      if (!existingSubheaders.includes(subheader.title)) {
-        existingSubheaders.push(subheader.title);
+
+      const existingSubheaders: Record<string, string[]> = {};
+      let currentSubheader = null;
+      for (
+        let i = headerIndex + 1;
+        i < (nextHeaderIndex === -1 ? lines.length : nextHeaderIndex);
+        i++
+      ) {
+        const line = lines[i];
+        if (line.trim().endsWith(":")) {
+          currentSubheader = line.trim().replace(":", "");
+          existingSubheaders[currentSubheader] = [];
+        } else if (currentSubheader) {
+          existingSubheaders[currentSubheader].push(line);
+        }
       }
-  
-      // Sort subheaders according to the header's subheader order
+
+      if (!existingSubheaders[subheader.title]) {
+        existingSubheaders[subheader.title] = [];
+      }
+
       const sortedSubheaders = (header.subheaders || [])
         .sort((a, b) => a.order - b.order)
-        .filter((sh) => existingSubheaders.includes(sh.title))
-        .map((sh) => `  ${sh.title}:`);
-  
-      // Replace the existing subheader lines with the updated and sorted subheaders
+        .map((sh) => sh.title);
+
+      const updatedSubheaderLines: string[] = [];
+      for (const subheaderTitle of sortedSubheaders) {
+        if (existingSubheaders[subheaderTitle]) {
+          updatedSubheaderLines.push(`  ${subheaderTitle}:`);
+          updatedSubheaderLines.push(...existingSubheaders[subheaderTitle]);
+        }
+      }
+
       lines.splice(
         headerIndex + 1,
-        nextHeaderIndex === -1 ? lines.length - headerIndex - 1 : nextHeaderIndex - headerIndex - 1,
-        ...sortedSubheaders
+        nextHeaderIndex === -1
+          ? lines.length - headerIndex - 1
+          : nextHeaderIndex - headerIndex - 1,
+        ...updatedSubheaderLines
       );
     }
-  
-    // Update the textbox value and trigger the history update
+
     textboxRef.current.value = lines.join("\n");
     updateHistory(textboxRef.current.value);
   };
@@ -178,9 +196,10 @@ function PageDetails() {
     const buttonText = btn?.onLeftClickOutput;
 
     if (buttonText) {
-      const header = pageDetails?.headers?.find((h) =>
-        //@ts-ignore
-        h._id === btn.headerId
+      const header = pageDetails?.headers?.find(
+        (h) =>
+          //@ts-ignore
+          h._id === btn.headerId
       );
       const subheader = pageDetails?.headers
         ?.flatMap((h) => h.subheaders || [])
@@ -203,8 +222,8 @@ function PageDetails() {
           if (subheaderIndex !== -1) {
             lines[subheaderIndex] += ` ${buttonText};`;
           } else {
-            const headerIndex = lines.findIndex(
-              (line) => line.trim() === `${headerText}:`
+            const headerIndex = lines.findIndex((line) =>
+              line.trim().includes(`${headerText}`)
             );
 
             if (headerIndex !== -1) {
@@ -220,8 +239,8 @@ function PageDetails() {
         }
       } else if (header) {
         const headerText = header.displayText;
-        const headerIndex = lines.findIndex(
-          (line) => line.trim() === `${headerText}:`
+        const headerIndex = lines.findIndex((line) =>
+          line.trim().includes(`${headerText}`)
         );
 
         if (headerIndex !== -1) {
@@ -254,9 +273,10 @@ function PageDetails() {
     const buttonText = btn?.onRightClickOutput;
 
     if (buttonText) {
-      const header = pageDetails?.headers?.find((h) =>
-        //@ts-ignore
-        h._id === btn.headerId
+      const header = pageDetails?.headers?.find(
+        (h) =>
+          //@ts-ignore
+          h._id === btn.headerId
       );
       const subheader = pageDetails?.headers
         ?.flatMap((h) => h.subheaders || [])
@@ -279,10 +299,10 @@ function PageDetails() {
           );
 
           if (subheaderIndex !== -1) {
-            lines[subheaderIndex] += `${buttonText};`;
+            lines[subheaderIndex] += ` ${buttonText};`;
           } else {
-            const headerIndex = lines.findIndex(
-              (line) => line.trim() === `${headerText}:`
+            const headerIndex = lines.findIndex((line) =>
+              line.trim().includes(`${headerText}`)
             );
 
             if (headerIndex !== -1) {
@@ -298,12 +318,12 @@ function PageDetails() {
         }
       } else if (header) {
         const headerText = header.displayText;
-        const headerIndex = lines.findIndex(
-          (line) => line.trim() === `${headerText}:`
+        const headerIndex = lines.findIndex((line) =>
+          line.trim().includes(`${headerText}`)
         );
 
         if (headerIndex !== -1) {
-          lines[headerIndex] = `${headerText}: ${buttonText};`;
+          lines[headerIndex] += ` ${buttonText};`;
         } else {
           lines.push(`${buttonText};`);
         }

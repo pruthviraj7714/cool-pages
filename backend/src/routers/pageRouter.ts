@@ -486,9 +486,9 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
     const subheaders = await SubHeader.create([
       { title: "SubHeader 1.1", order: 1 },
       { title: "SubHeader 1.2", order: 2 },
-      { title: "SubHeader 2.1", order: 3 },
-      { title: "SubHeader 3.1", order: 4 },
-      { title: "SubHeader 4.1", order: 5 },
+      { title: "SubHeader 2.1", order: 1 },
+      { title: "SubHeader 3.1", order: 1 },
+      { title: "SubHeader 4.1", order: 1 },
     ]);
 
     // Create buttons for headers
@@ -502,11 +502,11 @@ pageRouter.post("/populate-dummy-data", async (req, res) => {
 
     // Create unique buttons for subheaders
     const subheaderButtons = await Button.create([
-      { displayText: "SubHeader 1.1 Button", onRightClickOutput: "SubHeader 1.1 Right Click", subheaderId: subheaders[0]._id },
-      { displayText: "SubHeader 1.2 Button", onLeftClickOutput: "SubHeader 1.2 Left Click", subheaderId: subheaders[1]._id },
-      { displayText: "SubHeader 2.1 Button", onLeftClickOutput: "SubHeader 2.1 Left Click", subheaderId: subheaders[2]._id },
-      { displayText: "SubHeader 3.1 Button", onRightClickOutput: "SubHeader 3.1 Right Click", subheaderId: subheaders[3]._id },
-      { displayText: "SubHeader 4.1 Button", onLeftClickOutput: "SubHeader 4.1 Left Click", subheaderId: subheaders[4]._id },
+      { displayText: "SubHeader 1.1 Button", onLeftClickOutput: "Subheader 1.1 Left Click", onRightClickOutput: "SubHeader 1.1 Right Click", subheaderId: subheaders[0]._id },
+      { displayText: "SubHeader 1.2 Button", onLeftClickOutput: "Subheader 1.2 Left Click", onRightClickOutput: "SubHeader 1.2 Right Click", subheaderId: subheaders[1]._id },
+      { displayText: "SubHeader 2.1 Button", onLeftClickOutput: "Subheader 2.1 Left Click", onRightClickOutput: "SubHeader 2.1 Right Click", subheaderId: subheaders[2]._id },
+      { displayText: "SubHeader 3.1 Button", onLeftClickOutput: "Subheader 3.1 Left Click", onRightClickOutput: "SubHeader 3.1 Right Click", subheaderId: subheaders[3]._id },
+      { displayText: "SubHeader 4.1 Button", onLeftClickOutput: "Subheader 4.1 Left Click", onRightClickOutput: "SubHeader 4.1 Right Click", subheaderId: subheaders[4]._id },
     ]);
 
     // Create unique advanced buttons

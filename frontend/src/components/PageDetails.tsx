@@ -70,6 +70,8 @@ function PageDetails() {
 
     const text = textboxRef.current.value.trim();
 
+    if (text.includes(header.displayText)) return;
+
     const lines = text.split("\n").filter((line) => line.trim() !== "");
 
     const headerSubheadersMap = new Map();
@@ -109,51 +111,56 @@ function PageDetails() {
     header: HeaderSchema,
     subheader: SubHeaderSchema
   ) => {
-    if (!textboxRef.current) return;
-
+    if (!textboxRef.current || !header || !subheader) return;
+  
     const text = textboxRef.current.value;
     const lines = text.split("\n");
-
+  
+    // If the subheader already exists, do nothing
     if (text.includes(`${subheader.title}:`)) return;
-
+  
+    // Find the index of the header
     const headerIndex = lines.findIndex((line) =>
       line.trim().startsWith(header.displayText)
     );
-
+  
     if (headerIndex === -1) {
+      // Header doesn't exist, add the subheader as a new line
       lines.push(`${subheader.title}:`);
     } else {
+      // Find the next header's index or end of the text
       const nextHeaderIndex = lines.findIndex(
         (line, index) => index > headerIndex && !line.startsWith("  ")
       );
-
+  
+      // Extract existing subheaders under this header
       const existingSubheaders = lines
         .slice(
           headerIndex + 1,
           nextHeaderIndex === -1 ? undefined : nextHeaderIndex
         )
         .map((line) => line.trim().replace(":", ""));
-
-      const allSubheaders = (header.subheaders || []).sort(
-        (a, b) => a.order - b.order
-      );
-
+  
+      // Ensure the new subheader is added
       if (!existingSubheaders.includes(subheader.title)) {
         existingSubheaders.push(subheader.title);
       }
-
-      const sortedSubheaders = allSubheaders
+  
+      // Sort subheaders according to the header's subheader order
+      const sortedSubheaders = (header.subheaders || [])
+        .sort((a, b) => a.order - b.order)
         .filter((sh) => existingSubheaders.includes(sh.title))
         .map((sh) => `  ${sh.title}:`);
-
+  
+      // Replace the existing subheader lines with the updated and sorted subheaders
       lines.splice(
         headerIndex + 1,
-        //@ts-ignore
-        nextHeaderIndex === -1 ? undefined : nextHeaderIndex - headerIndex - 1,
+        nextHeaderIndex === -1 ? lines.length - headerIndex - 1 : nextHeaderIndex - headerIndex - 1,
         ...sortedSubheaders
       );
     }
-
+  
+    // Update the textbox value and trigger the history update
     textboxRef.current.value = lines.join("\n");
     updateHistory(textboxRef.current.value);
   };
@@ -172,11 +179,13 @@ function PageDetails() {
 
     if (buttonText) {
       const header = pageDetails?.headers?.find((h) =>
-        h.buttons?.includes(btn)
+        //@ts-ignore
+        h._id === btn.headerId
       );
       const subheader = pageDetails?.headers
         ?.flatMap((h) => h.subheaders || [])
-        .find((sh) => sh.buttons?.includes(btn));
+        //@ts-ignore
+        .find((sh) => sh._id === btn.subheaderId);
 
       if (subheader) {
         const parentHeader = pageDetails?.headers?.find((h) =>
@@ -188,14 +197,14 @@ function PageDetails() {
           const subheaderText = subheader.title;
 
           const subheaderIndex = lines.findIndex((line) =>
-            line.trim().includes(`${subheaderText}`)
+            line.trim().includes(`${subheaderText}:`)
           );
 
           if (subheaderIndex !== -1) {
             lines[subheaderIndex] += ` ${buttonText};`;
           } else {
             const headerIndex = lines.findIndex(
-              (line) => line.trim() === headerText
+              (line) => line.trim() === `${headerText}:`
             );
 
             if (headerIndex !== -1) {
@@ -246,11 +255,13 @@ function PageDetails() {
 
     if (buttonText) {
       const header = pageDetails?.headers?.find((h) =>
-        h.buttons?.includes(btn)
+        //@ts-ignore
+        h._id === btn.headerId
       );
       const subheader = pageDetails?.headers
         ?.flatMap((h) => h.subheaders || [])
-        .find((sh) => sh.buttons?.includes(btn));
+        //@ts-ignore
+        .find((sh) => sh._id === btn.subheaderId);
 
       const lines = text.split("\n");
 
@@ -268,7 +279,7 @@ function PageDetails() {
           );
 
           if (subheaderIndex !== -1) {
-            lines[subheaderIndex] = `  ${subheaderText}: ${buttonText};`;
+            lines[subheaderIndex] += `${buttonText};`;
           } else {
             const headerIndex = lines.findIndex(
               (line) => line.trim() === `${headerText}:`
@@ -303,6 +314,7 @@ function PageDetails() {
     }
     updateHistory(textboxRef.current.value);
   };
+
   const handleUndo = () => {
     if (currentIndex > 0) {
       setIsUndoRedoAction(true);
@@ -475,7 +487,7 @@ function PageDetails() {
             autoFocus
             ref={textboxRef}
             placeholder="Text will appear here"
-            className="w-full h-full p-4 bg-slate-200 font-semibold resize-none"
+            className="w-full h-full p-4 bg-slate-200 font-semibold resize-non"
           />
         </div>
       </div>

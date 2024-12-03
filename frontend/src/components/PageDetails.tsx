@@ -187,7 +187,6 @@ function PageDetails() {
     e.preventDefault();
     if (!textboxRef.current) return;
 
-    console.log(textboxRef.current.value);
     if (textboxRef.current.value.includes(btn?.onLeftClickOutput as string))
       return;
 
@@ -195,71 +194,77 @@ function PageDetails() {
     const lines = text.split("\n");
     const buttonText = btn?.onLeftClickOutput;
 
-    if (buttonText) {
-      const header = pageDetails?.headers?.find(
-        (h) =>
-          //@ts-ignore
-          h._id === btn.headerId
-      );
-      const subheader = pageDetails?.headers
-        ?.flatMap((h) => h.subheaders || [])
-        //@ts-ignore
-        .find((sh) => sh._id === btn.subheaderId);
+    if (!buttonText) return;
+    //@ts-ignore
+    const header = pageDetails?.headers?.find((h) => h._id === btn.headerId);
+    const subheader = pageDetails?.headers
+      ?.flatMap((h) => h.subheaders || [])
+      //@ts-ignore
+      .find((sh) => sh._id === btn.subheaderId);
 
-      if (subheader) {
-        const parentHeader = pageDetails?.headers?.find((h) =>
-          h.subheaders?.includes(subheader)
+    let updatedLines = [...lines];
+
+    if (subheader) {
+      const parentHeader = pageDetails?.headers?.find((h) =>
+        h.subheaders?.includes(subheader)
+      );
+
+      if (parentHeader) {
+        const headerText = parentHeader.displayText;
+        const subheaderText = subheader.title;
+
+        const subheaderIndex = updatedLines.findIndex((line) =>
+          line.trim().includes(`${subheaderText}:`)
         );
 
-        if (parentHeader) {
-          const headerText = parentHeader.displayText;
-          const subheaderText = subheader.title;
-
-          const subheaderIndex = lines.findIndex((line) =>
-            line.trim().includes(`${subheaderText}:`)
+        if (subheaderIndex !== -1) {
+          updatedLines[subheaderIndex] += ` ${buttonText};`;
+        } else {
+          const headerIndex = updatedLines.findIndex((line) =>
+            line.trim().includes(`${headerText}`)
           );
 
-          if (subheaderIndex !== -1) {
-            lines[subheaderIndex] += ` ${buttonText};`;
-          } else {
-            const headerIndex = lines.findIndex((line) =>
-              line.trim().includes(`${headerText}`)
+          if (headerIndex !== -1) {
+            updatedLines.splice(
+              headerIndex + 1,
+              0,
+              `  ${subheaderText}: ${buttonText};`
             );
-
-            if (headerIndex !== -1) {
-              lines.splice(
-                headerIndex + 1,
-                0,
-                `  ${subheaderText}: ${buttonText};`
-              );
-            } else {
-              lines.push(`${buttonText};`);
-            }
+          } else {
+            updatedLines.push(
+              `${headerText}:\n  ${subheaderText}: ${buttonText};`
+            );
           }
         }
-      } else if (header) {
-        const headerText = header.displayText;
-        const headerIndex = lines.findIndex((line) =>
-          line.trim().includes(`${headerText}`)
-        );
-
-        if (headerIndex !== -1) {
-          lines[headerIndex] += ` ${buttonText};`;
-        } else {
-          lines.push(`${buttonText};`);
-        }
-      } else {
-        if (buttonText) {
-          lines.push(buttonText) + ";";
-        }
       }
+    } else if (header) {
+      const headerText = header.displayText;
+      const headerIndex = updatedLines.findIndex((line) =>
+        line.trim().includes(`${headerText}`)
+      );
 
-      textboxRef.current.value = lines.join("\n");
+      if (headerIndex !== -1) {
+        updatedLines[headerIndex] += ` ${buttonText};`;
+      } else {
+        updatedLines.push(`${headerText}:  ${buttonText};`);
+      }
+    } else {
+      //@ts-ignore
+      const fallbackHeaderText = header?.displayText;
+      //@ts-ignore
+      const fallbackSubheaderText = subheader?.title;
+
+      updatedLines.push(
+        `${fallbackHeaderText}:\n  ${fallbackSubheaderText}: ${buttonText};`
+      );
     }
 
-    updateHistory(textboxRef.current.value);
+    const updatedText = updatedLines.join("\n");
+    if (textboxRef.current) {
+      textboxRef.current.value = updatedText;
+      updateHistory(updatedText);
+    }
   };
-
   const handleRightClick = (btn: ButtonSchema) => {
     document.addEventListener("contextmenu", (event) => event.preventDefault());
 
@@ -269,70 +274,79 @@ function PageDetails() {
       return;
 
     const text = textboxRef.current.value;
-    if (text.includes(btn.displayText)) return;
     const buttonText = btn?.onRightClickOutput;
 
-    if (buttonText) {
-      const header = pageDetails?.headers?.find(
-        (h) =>
-          //@ts-ignore
-          h._id === btn.headerId
+    if (!buttonText) return;
+    //@ts-ignore
+    const header = pageDetails?.headers?.find((h) => h._id === btn.headerId);
+    const subheader = pageDetails?.headers
+      ?.flatMap((h) => h.subheaders || [])
+      //@ts-ignore
+      .find((sh) => sh._id === btn.subheaderId);
+
+    const lines = text.split("\n");
+    let updatedLines = [...lines];
+
+    if (subheader) {
+      const parentHeader = pageDetails?.headers?.find((h) =>
+        h.subheaders?.includes(subheader)
       );
-      const subheader = pageDetails?.headers
-        ?.flatMap((h) => h.subheaders || [])
-        //@ts-ignore
-        .find((sh) => sh._id === btn.subheaderId);
 
-      const lines = text.split("\n");
+      if (parentHeader) {
+        const headerText = parentHeader.displayText;
+        const subheaderText = subheader.title;
 
-      if (subheader) {
-        const parentHeader = pageDetails?.headers?.find((h) =>
-          h.subheaders?.includes(subheader)
+        const subheaderIndex = updatedLines.findIndex((line) =>
+          line.trim().includes(`${subheaderText}:`)
         );
 
-        if (parentHeader) {
-          const headerText = parentHeader.displayText;
-          const subheaderText = subheader.title;
-
-          const subheaderIndex = lines.findIndex((line) =>
-            line.trim().includes(`${subheaderText}`)
+        if (subheaderIndex !== -1) {
+          updatedLines[subheaderIndex] += ` ${buttonText};`;
+        } else {
+          const headerIndex = updatedLines.findIndex((line) =>
+            line.trim().includes(`${headerText}`)
           );
 
-          if (subheaderIndex !== -1) {
-            lines[subheaderIndex] += ` ${buttonText};`;
-          } else {
-            const headerIndex = lines.findIndex((line) =>
-              line.trim().includes(`${headerText}`)
+          if (headerIndex !== -1) {
+            updatedLines.splice(
+              headerIndex + 1,
+              0,
+              `  ${subheaderText}: ${buttonText};`
             );
-
-            if (headerIndex !== -1) {
-              lines.splice(
-                headerIndex + 1,
-                0,
-                `  ${subheaderText}: ${buttonText};`
-              );
-            } else {
-              lines.push(`${buttonText};`);
-            }
+          } else {
+            updatedLines.push(
+              `${headerText}:\n  ${subheaderText}: ${buttonText};`
+            );
           }
         }
-      } else if (header) {
-        const headerText = header.displayText;
-        const headerIndex = lines.findIndex((line) =>
-          line.trim().includes(`${headerText}`)
-        );
-
-        if (headerIndex !== -1) {
-          lines[headerIndex] += ` ${buttonText};`;
-        } else {
-          lines.push(`${buttonText};`);
-        }
-      } else {
-        lines.push(buttonText + ";");
       }
-      textboxRef.current.value = lines.join("\n");
+    } else if (header) {
+      const headerText = header.displayText;
+      const headerIndex = updatedLines.findIndex((line) =>
+        line.trim().includes(`${headerText}`)
+      );
+
+      if (headerIndex !== -1) {
+        updatedLines[headerIndex] += ` ${buttonText};`;
+      } else {
+        updatedLines.push(`${headerText}: ${buttonText};`);
+      }
+    } else {
+      //@ts-ignore
+      const fallbackHeaderText = header?.displayText;
+      //@ts-ignore
+      const fallbackSubheaderText = subheader?.title;
+
+      updatedLines.push(
+        `${fallbackHeaderText}:\n  ${fallbackSubheaderText}: ${buttonText};`
+      );
     }
-    updateHistory(textboxRef.current.value);
+
+    const updatedText = updatedLines.join("\n");
+    if (textboxRef.current) {
+      textboxRef.current.value = updatedText;
+      updateHistory(updatedText);
+    }
   };
 
   const handleUndo = () => {

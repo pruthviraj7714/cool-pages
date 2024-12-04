@@ -183,80 +183,122 @@ function PageDetails() {
     updateHistory(textboxRef.current.value);
   };
 
-  const handleLeftClick = (btn: ButtonSchema, e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!textboxRef.current) return;
-
-    if (textboxRef.current.value.includes(btn?.onLeftClickOutput as string))
-      return;
+  const updateContentWithClick = (
+    buttonText: string | undefined,
+    headerId: string | undefined,
+    subheaderId: string | undefined
+  ) => {
+    if (!textboxRef.current || !buttonText) return;
 
     const text = textboxRef.current.value;
-    const lines = text.split("\n");
-    const buttonText = btn?.onLeftClickOutput;
 
-    if (!buttonText) return;
+    if(text.includes(buttonText)) return;
+    const lines = text.split("\n");
+    let updatedLines = [...lines];
+
     //@ts-ignore
-    const header = pageDetails?.headers?.find((h) => h._id === btn.headerId);
+    const header = pageDetails?.headers?.find((h) => h._id === headerId);
+    //@ts-ignore
     const subheader = pageDetails?.headers
       ?.flatMap((h) => h.subheaders || [])
       //@ts-ignore
-      .find((sh) => sh._id === btn.subheaderId);
-
-    let updatedLines = [...lines];
+      ?.find((sh) => sh._id === subheaderId);
 
     if (subheader) {
       const parentHeader = pageDetails?.headers?.find((h) =>
-        h.subheaders?.includes(subheader)
+        //@ts-ignore
+        h.subheaders?.some((sh) => sh._id === subheaderId)
       );
 
       if (parentHeader) {
         const headerText = parentHeader.displayText;
         const subheaderText = subheader.title;
 
+        let headerIndex = updatedLines.findIndex((line) =>
+          line.trim().startsWith(headerText)
+        );
+        if (headerIndex === -1) {
+          const sortedHeaders =
+            pageDetails?.headers?.slice().sort((a, b) => a.order - b.order) ||
+            [];
+          const parentOrder = parentHeader.order;
+
+          let insertAt = updatedLines.length;
+          for (const sortedHeader of sortedHeaders) {
+            if (sortedHeader.order > parentOrder) {
+              const existingHeaderIndex = updatedLines.findIndex((line) =>
+                line.trim().startsWith(sortedHeader.displayText)
+              );
+              if (existingHeaderIndex !== -1) {
+                insertAt = existingHeaderIndex;
+                break;
+              }
+            }
+          }
+          updatedLines.splice(insertAt, 0, `${headerText}:`);
+          headerIndex = insertAt;
+        }
+
         const subheaderIndex = updatedLines.findIndex((line) =>
-          line.trim().includes(`${subheaderText}:`)
+          line.trim().startsWith(`${subheaderText}:`)
         );
 
         if (subheaderIndex !== -1) {
           updatedLines[subheaderIndex] += ` ${buttonText};`;
         } else {
-          const headerIndex = updatedLines.findIndex((line) =>
-            line.trim().includes(`${headerText}`)
-          );
+          const existingSubheaders = parentHeader.subheaders
+            ?.slice()
+            .sort((a, b) => a.order - b.order);
+          let insertAt = headerIndex + 1;
 
-          if (headerIndex !== -1) {
-            updatedLines.splice(
-              headerIndex + 1,
-              0,
-              `  ${subheaderText}: ${buttonText};`
-            );
-          } else {
-            updatedLines.push(
-              `${headerText}:\n  ${subheaderText}: ${buttonText};`
-            );
+          if (existingSubheaders) {
+            for (const sh of existingSubheaders) {
+              if (sh.order < subheader.order) {
+                const shLineIndex = updatedLines.findIndex((line) =>
+                  line.trim().startsWith(sh.title)
+                );
+                if (shLineIndex !== -1) {
+                  insertAt = shLineIndex + 1;
+                }
+              }
+            }
           }
+
+          updatedLines.splice(
+            insertAt,
+            0,
+            `  ${subheaderText}: ${buttonText};`
+          );
         }
       }
     } else if (header) {
       const headerText = header.displayText;
+
       const headerIndex = updatedLines.findIndex((line) =>
-        line.trim().includes(`${headerText}`)
+        line.trim().startsWith(headerText)
       );
 
       if (headerIndex !== -1) {
         updatedLines[headerIndex] += ` ${buttonText};`;
       } else {
-        updatedLines.push(`${headerText}:  ${buttonText};`);
-      }
-    } else {
-      //@ts-ignore
-      const fallbackHeaderText = header?.displayText;
-      //@ts-ignore
-      const fallbackSubheaderText = subheader?.title;
+        const sortedHeaders =
+          pageDetails?.headers?.slice().sort((a, b) => a.order - b.order) || [];
 
-      updatedLines.push(
-        `${fallbackHeaderText}:\n  ${fallbackSubheaderText}: ${buttonText};`
-      );
+        let insertAt = updatedLines.length;
+        for (const sortedHeader of sortedHeaders) {
+          if (sortedHeader.order > header.order) {
+            const existingHeaderIndex = updatedLines.findIndex((line) =>
+              line.trim().startsWith(sortedHeader.displayText)
+            );
+            if (existingHeaderIndex !== -1) {
+              insertAt = existingHeaderIndex;
+              break;
+            }
+          }
+        }
+
+        updatedLines.splice(insertAt, 0, `${headerText}: ${buttonText};`);
+      }
     }
 
     const updatedText = updatedLines.join("\n");
@@ -265,88 +307,27 @@ function PageDetails() {
       updateHistory(updatedText);
     }
   };
-  const handleRightClick = (btn: ButtonSchema) => {
+
+  const handleLeftClick = (btn: ButtonSchema, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!btn?.onLeftClickOutput) return;
+    updateContentWithClick(
+      btn.onLeftClickOutput,
+      btn.headerId,
+      btn.subheaderId
+    );
+  };
+
+  const handleRightClick = (btn: ButtonSchema, e: React.MouseEvent) => {
+    e.preventDefault();
     document.addEventListener("contextmenu", (event) => event.preventDefault());
 
-    if (!textboxRef.current) return;
-
-    if (textboxRef.current.value.includes(btn?.onRightClickOutput as string))
-      return;
-
-    const text = textboxRef.current.value;
-    const buttonText = btn?.onRightClickOutput;
-
-    if (!buttonText) return;
-    //@ts-ignore
-    const header = pageDetails?.headers?.find((h) => h._id === btn.headerId);
-    const subheader = pageDetails?.headers
-      ?.flatMap((h) => h.subheaders || [])
-      //@ts-ignore
-      .find((sh) => sh._id === btn.subheaderId);
-
-    const lines = text.split("\n");
-    let updatedLines = [...lines];
-
-    if (subheader) {
-      const parentHeader = pageDetails?.headers?.find((h) =>
-        h.subheaders?.includes(subheader)
-      );
-
-      if (parentHeader) {
-        const headerText = parentHeader.displayText;
-        const subheaderText = subheader.title;
-
-        const subheaderIndex = updatedLines.findIndex((line) =>
-          line.trim().includes(`${subheaderText}:`)
-        );
-
-        if (subheaderIndex !== -1) {
-          updatedLines[subheaderIndex] += ` ${buttonText};`;
-        } else {
-          const headerIndex = updatedLines.findIndex((line) =>
-            line.trim().includes(`${headerText}`)
-          );
-
-          if (headerIndex !== -1) {
-            updatedLines.splice(
-              headerIndex + 1,
-              0,
-              `  ${subheaderText}: ${buttonText};`
-            );
-          } else {
-            updatedLines.push(
-              `${headerText}:\n  ${subheaderText}: ${buttonText};`
-            );
-          }
-        }
-      }
-    } else if (header) {
-      const headerText = header.displayText;
-      const headerIndex = updatedLines.findIndex((line) =>
-        line.trim().includes(`${headerText}`)
-      );
-
-      if (headerIndex !== -1) {
-        updatedLines[headerIndex] += ` ${buttonText};`;
-      } else {
-        updatedLines.push(`${headerText}: ${buttonText};`);
-      }
-    } else {
-      //@ts-ignore
-      const fallbackHeaderText = header?.displayText;
-      //@ts-ignore
-      const fallbackSubheaderText = subheader?.title;
-
-      updatedLines.push(
-        `${fallbackHeaderText}:\n  ${fallbackSubheaderText}: ${buttonText};`
-      );
-    }
-
-    const updatedText = updatedLines.join("\n");
-    if (textboxRef.current) {
-      textboxRef.current.value = updatedText;
-      updateHistory(updatedText);
-    }
+    if (!btn?.onRightClickOutput) return;
+    updateContentWithClick(
+      btn.onRightClickOutput,
+      btn.headerId,
+      btn.subheaderId
+    );
   };
 
   const handleUndo = () => {
